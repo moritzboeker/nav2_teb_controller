@@ -39,7 +39,7 @@ cd ~/ros2_ws
 rosdep install --from-paths src --ignore-src -r -y
 
 # Build
-colcon build --packages-select nav2_teb_controller --cmake-args -DCMAKE_BUILD_TYPE=Release
+colcon build --packages-select nav2_teb_controller
 
 # Source
 source install/setup.bash
