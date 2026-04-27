@@ -1,0 +1,8 @@
+<library path="nav2_teb_controller">
+  <class type="nav2_teb_controller::TEBController" base_class_type="nav2_core::Controller">
+    <description>
+      Timed Elastic Band local planner for Nav2.
+      Supports bicycle and diff-drive kinematic models.
+    </description>
+  </class>
+</library>

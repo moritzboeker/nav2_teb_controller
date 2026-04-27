@@ -1,0 +1,522 @@
+teb_controller:
+  FollowPath:
+    log_level:
+      type: string
+      default_value: "debug"
+      description: "ROS logging level"
+      read_only: true
+      validation:
+        one_of<>: [["debug", "info", "warn", "error"]]
+    hcp:
+      activate:
+        type: bool
+        default_value: true
+
+    path_tracker:
+      activate:
+        type: bool
+        default_value: true
+
+    trajectory:
+      reinit_dist:
+        type: double
+        default_value: 1.055
+      reinit_angle:
+        type: double
+        default_value: 1.055
+      auto_resize:
+        type: bool
+        default_value: true
+      dt_ref:
+        type: double
+        default_value: 0.3
+      dt_hyst:
+        type: double
+        default_value: 0.05
+      min_samples:
+        type: int
+        default_value: 3
+      max_samples:
+        type: int
+        default_value: 50
+      min_seg_length:
+        type: double
+        default_value: 0.1
+      max_seg_length:
+        type: double
+        default_value: 0.3
+      max_angle_diff:
+        type: double
+        default_value: 0.15
+      overwrite_plan_orientation:
+        type: bool
+        default_value: false
+      allow_init_backward:
+        type: bool
+        default_value: true
+      control_look_ahead_poses:
+        type: int
+        default_value: 1
+      max_global_plan_lookahead_dist:
+        type: double
+        default_value: 5.0
+      global_plan_prune_distance:
+        type: double
+        default_value: 0.5
+      control_min_look_ahead_time:
+        type: double
+        default_value: 0.0
+
+    robot:
+      footprint:
+          use_local_costmap:
+            type: bool
+            default_value: true
+          model: 
+            type: string
+            default_value: ""
+          points: 
+            type: string
+            default_value: ""
+
+      robot_model: 
+        type: string
+        default_value: "bicycle"
+        description: "Robot kinematic model. bicycle or diff_drive"
+        read_only: true
+        validation:
+          one_of<>: [["bicycle", "diff_drive"]]
+
+      wheelbase:
+        type: double
+        default_value: 1.055
+        description: "Wheelbase L in meters. Used by bicycle model only."
+        validation:
+          bounds<>: [0.1, 10.0]
+
+      v_max_x:
+        type: double
+        default_value: 0.5
+        description: "Maximum linear velocity m/s"
+        validation:
+          bounds<>: [0.0, 10.0]
+
+      v_max_x_backwards:
+        type: double
+        default_value: 0.0
+        description: "Maximum reverse velocity m/s. 0 disables reverse."
+        validation:
+          bounds<>: [0.0, 10.0]
+
+      v_max_y:
+        type: double
+        default_value: 0.5
+        description: "Maximum linear velocity m/s"
+        validation:
+          bounds<>: [0.0, 10.0]
+
+      v_max_theta:
+        type: double
+        default_value: 0.0
+        description: "Maximum omega velocity rad/s."
+        validation:
+          bounds<>: [0.0, 10.0]
+
+      a_max_x:
+        type: double
+        default_value: 0.25
+        description: "Maximum linear acceleration m/s²"
+        validation:
+          bounds<>: [0.0, 10.0]
+
+      a_max_y:
+        type: double
+        default_value: 0.0
+        description: "Maximum reverse deceleration m/s²"
+        validation:
+          bounds<>: [0.0, 10.0]
+
+      a_max_theta:
+        type: double
+        default_value: 0.0
+        description: "Maximum reverse deceleration m/s²"
+        validation:
+          bounds<>: [0.0, 10.0]
+
+      jerk_max_x:
+        type: double
+        default_value: 2.0
+        description: "Maximum jerk m/s³"
+        validation:
+          bounds<>: [0.0, 100.0]
+
+      jerk_max_y:
+        type: double
+        default_value: 2.0
+        description: "Maximum jerk m/s³"
+        validation:
+          bounds<>: [0.0, 100.0]
+
+      jerk_max_theta:
+        type: double
+        default_value: 2.0
+        description: "Maximum jerk m/s³"
+        validation:
+          bounds<>: [0.0, 100.0]
+
+      snap_max_x:
+        type: double
+        default_value: 0.0
+        description: "Max"
+        validation:
+          bounds<>: [0.0, 1000.0]
+
+      snap_max_theta:
+        type: double
+        default_value: 0.0
+        description: "Max"
+        validation:
+          bounds<>: [0.0, 1000.0]
+
+      steering_rate_max:
+        type: double
+        default_value: 0.5
+        description: "Maximum steering rate rad/s. Bicycle model only."
+        validation:
+          bounds<>: [0.0, 10.0]
+
+      min_turning_radius:
+        type: double
+        default_value: 0.5
+        description: "Minimum turning radius R_min in meters"
+        validation:
+          bounds<>: [0.0, 100.0]
+
+      has_steering:
+        type: bool
+        default_value: true
+
+      use_proportional_saturation:
+        type: bool
+        default_value: true
+
+    optimizer:
+      optimizer_backend:
+        type: string
+        default_value: "g2o"
+        description: "Optimization backend: g2o or ceres"
+        read_only: true
+        validation:
+          one_of<>: [["g2o", "ceres"]]
+
+      solver:
+        type: string
+        default_value: "eigen"
+        description: "Optimization solver: cholmod, eigen, csparse, dense"
+        read_only: true
+        validation:
+          one_of<>: [["cholmod", "eigen", "csparse", "dense"]]
+
+      algorithm:
+        type: string
+        default_value: "gauss_newton"
+        description: "Optimization algorithm: gauss_newton or levenberg_marquardt"
+        read_only: true
+        validation:
+          one_of<>: [["gauss_newton", "levenberg_marquardt"]]
+
+      activate:
+        type: bool
+        default_value: true
+
+      fast_mode:
+        type: bool
+        default_value: true
+
+      exact_arc_length:
+        type: bool
+        default_value: true
+        
+      optimizer_backend:
+        type: string
+        default_value: "g2o"
+        description: "Optimization backend: g2o or ceres"
+        read_only: true
+        validation:
+          one_of<>: [["g2o", "ceres"]]
+
+      no_inner_iterations:
+        type: int
+        default_value: 100
+        description: "Maximum number of optimizer iterations per cycle"
+        validation:
+          bounds<>: [1, 1000]
+
+      no_outer_iterations:
+        type: int
+        default_value: 100
+        description: "Maximum number of optimizer iterations per cycle"
+        validation:
+          bounds<>: [1, 1000]
+
+      penalty_epsilon:
+        type: double
+        default_value: 0.1
+        description: "Buffer zone before constraint boundary for penalty functions"
+        validation:
+          bounds<>: [0.0, 1.0]
+
+      fix_goal:
+        type: bool
+        default_value: true
+
+      free_goal_vel:
+        type: bool
+        default_value: false
+        description: "If true, do not enforce v=0 and delta=0 at goal"
+
+      verbose:
+        type: bool
+        default_value: false
+
+      divergence_detection_enable:
+        type: bool
+        default_value: false
+
+      divergence_detection_max_chi_squared:
+        type: double
+        default_value: 10.0
+
+      divergence_detection_max_chi_violation_rate:
+        type: double
+        default_value: 0.5
+
+      divergence_detection_max_path_length_factor:
+        type: double
+        default_value: 3.0
+
+    weights:
+      weight_adapt_factor:
+        type: double
+        default_value: 1.0
+
+      weight_time_optimal:
+        type: double
+        default_value: 1.0
+        description: "Weight for time-optimal edge: minimize sum(T_i)"
+        validation:
+          bounds<>: [0.0, 1000.0]
+
+      weight_shortest_path:
+        type: double
+        default_value: 1.0
+        description: "Weight"
+        validation:
+          bounds<>: [0.0, 1000.0]
+
+      weight_path_smoothness:
+        type: double
+        default_value: 1.0
+        description: "Weight"
+        validation:
+          bounds<>: [0.0, 1000.0]
+
+      weight_v_max_x:
+        type: double
+        default_value: 1.0
+        description: "Weight"
+        validation:
+          bounds<>: [0.0, 1000.0]
+
+      weight_v_max_y:
+        type: double
+        default_value: 1.0
+        description: "Weight"
+        validation:
+          bounds<>: [0.0, 1000.0]
+
+      weight_v_max_theta:
+        type: double
+        default_value: 1.0
+        description: "Weight"
+        validation:
+          bounds<>: [0.0, 1000.0]
+
+      weight_a_max_x:
+        type: double
+        default_value: 1.0
+        description: "Weight"
+        validation:
+          bounds<>: [0.0, 1000.0]
+
+      weight_jerk_max_x:
+        type: double
+        default_value: 1.0
+        description: "Weight"
+        validation:
+          bounds<>: [0.0, 1000.0]
+
+      weight_jerk_max_theta:
+        type: double
+        default_value: 1.0
+        description: "Weight"
+        validation:
+          bounds<>: [0.0, 1000.0]
+
+      weight_snap_max_x:
+        type: double
+        default_value: 1.0
+        description: "Weight"
+        validation:
+          bounds<>: [0.0, 1000.0]
+
+      weight_snap_max_theta:
+        type: double
+        default_value: 1.0
+        description: "Weight"
+        validation:
+          bounds<>: [0.0, 1000.0]
+
+      weight_a_max_y:
+        type: double
+        default_value: 1.0
+        description: "Weight"
+        validation:
+          bounds<>: [0.0, 1000.0]
+
+      weight_a_max_theta:
+        type: double
+        default_value: 1.0
+        description: "Weight"
+        validation:
+          bounds<>: [0.0, 1000.0]
+
+      weight_kinematics_nh:
+        type: double
+        default_value: 1.0
+        description: "Weight"
+        validation:
+          bounds<>: [0.0, 100000.0]
+
+      weight_kinematics_forward_drive:
+        type: double
+        default_value: 1.0
+        description: "Weight"
+        validation:
+          bounds<>: [0.0, 1000.0]
+
+      weight_kinematics_turning_radius:
+        type: double
+        default_value: 1.0
+        description: "Weight"
+        validation:
+          bounds<>: [0.0, 1000.0]
+
+      weight_max_steering_rate:
+        type: double
+        default_value: 1.0
+        description: "Weight"
+        validation:
+          bounds<>: [0.0, 1000.0]
+
+      weight_zero_steering_angle_goal:
+        type: double
+        default_value: 1.0
+        description: "Weight"
+        validation:
+          bounds<>: [0.0, 1000.0]
+
+      weight_start_steering_angle:
+        type: double
+        default_value: 1.0
+        description: "Weight"
+        validation:
+          bounds<>: [0.0, 1000.0]
+
+      weight_goal_angular_vel_zero:
+        type: double
+        default_value: 1.0
+        description: "Weight"
+        validation:
+          bounds<>: [0.0, 1000.0]
+
+      weight_g3_continuity:
+        type: double
+        default_value: 1.0
+        description: "Weight"
+        validation:
+          bounds<>: [0.0, 1000.0]
+
+      weight_obstacle:
+        type: double
+        default_value: 50.0
+        description: "Weight for obstacle avoidance edge"
+        validation:
+          bounds<>: [0.0, 1000.0]
+
+      weight_inflation:
+        type: double
+        default_value: 50.0
+        description: "Weight for obstacle avoidance edge"
+        validation:
+          bounds<>: [0.0, 1000.0]
+
+    obstacles:
+      include_dynamic_obstacles:
+        type: bool
+        default_value: false
+        
+      legacy_obstacle_association:
+        type: bool
+        default_value: false
+
+      feasibility_check:
+        type: double
+        default_value: 1.0
+
+      min_obstacle_cost:
+        type: int
+        default_value: 128
+
+      inflation_dist:
+        type: double
+        default_value: 1.9
+
+      min_obstacle_dist:
+        type: double
+        default_value: 0.1
+
+      cutoff_dist:
+        type: double
+        default_value: 1.0
+
+      cost_exponent:
+        type: double
+        default_value: 2.0
+        
+      costmap_converter_plugin: 
+        type: string
+        default_value: ""
+
+      costmap_converter_rate:
+        type: double
+        default_value: 1.0
+
+      costmap_converter_spin_thread:
+        type: bool
+        default_value: true
+
+    recovery:
+      activate:
+        type: bool
+        default_value: false
+        description: "activate recovery modes"
+      divergence_detection_enable:
+        type: bool
+        default_value: false
+
+    visualization:
+      activate:
+        type: bool
+        default_value: false
+        description: "Publish markers"

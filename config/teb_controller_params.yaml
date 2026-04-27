@@ -1,0 +1,137 @@
+controller_server:
+  ros__parameters:
+    # Server Parameters
+    controller_frequency: 20.0
+    costmap_update_timeout: 0.30
+    min_x_velocity_threshold: 0.001 # 0.001
+    min_y_velocity_threshold: 0.0
+    min_theta_velocity_threshold: 0.001 # 0.001
+    failure_tolerance: 0.3
+    use_realtime_priority: true
+    enable_stamped_cmd_vel: false
+    publish_zero_velocity: true
+    odom_topic: odom
+    speed_limit_topic: speed_limit
+    # Plugin Configuration
+    progress_checker_plugins: ["progress_checker"]
+    goal_checker_plugins: ["precise_goal_checker"]
+    controller_plugins: ["FollowPath"]
+    # Progress Checker
+    progress_checker:
+      plugin: "nav2_controller::SimpleProgressChecker"
+      required_movement_radius: 0.5
+      movement_time_allowance: 30.0
+    # Goal Checker
+    precise_goal_checker:
+      plugin: "nav2_controller::SimpleGoalChecker"
+      xy_goal_tolerance: 0.03 # 0.2
+      yaw_goal_tolerance: 0.03 # 0.2
+      stateful: false     
+    FollowPath:
+      plugin: "nav2_teb_controller::TEBController"
+      log_level: "debug"  # debug | info | warn | error | fatal
+      path_tracker:
+        activate: true
+      hcp:
+        activate: true
+      trajectory:
+        reinit_dist: 0.1
+        reinit_angle: 0.1
+        auto_resize: true
+        dt_ref: 0.3
+        dt_hyst: 0.05
+        min_samples: 3
+        max_samples: 50
+        double min_seg_length: 0.1
+        double max_seg_length: 0.3
+        double max_angle_diff: 0.1
+        overwrite_plan_orientation: false
+        allow_init_backward: true
+        control_look_ahead_poses: 1
+        max_global_plan_lookahead_dist: 5.0
+        global_plan_prune_distance: 0.5
+        control_min_look_ahead_time: 0.0
+      robot:
+        footprint:
+          use_local_costmap: true
+          model: "" # circles | polygon
+          points: ""
+        robot_model: "diff_drive"
+        wheelbase: 1.055
+        v_max_x: 0.5
+        v_max_x_backwards: 0.0
+        v_max_y: 0.5
+        v_max_theta: 0.0
+        a_max_x: 0.25
+        a_max_y: 0.0
+        a_max_theta: 0.0
+        jerk_max_x: 2.0
+        jerk_max_y: 0.0
+        jerk_max_theta: 2.0
+        snap_max_x: 2.0
+        snap_max_theta: 2.0
+        steering_rate_max: 0.5
+        min_turning_radius: 0.5
+        has_steering: true
+        use_proportional_saturation: true
+      optimizer:
+        optimizer_backend: "g2o"
+        solver: "eigen"
+        algorithm: "gauss_newton"
+        activate: true
+        fast_mode: true
+        exact_arc_length: true
+        no_inner_iterations: 100
+        no_outer_iterations: 100
+        penalty_epsilon: 0.1
+        fix_goal: true
+        free_goal_vel: false
+        verbose: false
+        divergence_detection_enable: true
+        divergence_detection_max_chi_squared: 10
+        divergence_detection_max_chi_violation_rate: 0.5
+        divergence_detection_max_path_length_factor: 3.0
+      weights:
+        weight_adapt_factor: 1.0
+        weight_time_optimal: 1.0
+        weight_shortest_path: 1.0
+        weight_path_smoothness: 1.0
+        weight_v_max_x: 1.0
+        weight_v_max_y: 1.0
+        weight_v_max_theta: 1.0
+        weight_a_max_x: 1.0
+        weight_a_max_y: 1.0
+        weight_a_max_theta: 1.0
+        weight_jerk_max_x: 1.0
+        weight_jerk_max_theta: 1.0
+        weight_snap_max_x: 1.0
+        weight_snap_max_theta: 1.0
+        weight_kinematics_nh: 1.0
+        weight_kinematics_forward_drive: 1.0
+        weight_kinematics_turning_radius: 1.0
+        weight_max_steering_rate: 1.0
+        weight_zero_steering_angle_goal: 1.0
+        weight_start_steering_angle: 1.0
+        weight_goal_angular_vel_zero: 1.0
+        weight_g3_continuity: 1.0
+        weight_obstacle: 50.0
+        weight_inflation: 0.0
+      obstacles:
+        include_dynamic_obstacles: false
+        legacy_obstacle_association: false
+        feasibility_check: 1.0
+        min_obstacle_cost: 128
+        inflation_dist: 1.9
+        min_obstacle_dist: 0.1
+        cutoff_dist: 1.0
+        cost_exponent: 2.0
+        costmap_converter_plugin: "costmap_converter::CostmapToLinesDBSMCCH"
+        costmap_converter_rate: 2.0
+        costmap_converter_spin_thread: true
+
+      recovery:
+        activate: false
+        divergence_detection_enable: false
+      visualization:
+        activate: false
+        
