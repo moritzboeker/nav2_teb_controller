@@ -42,9 +42,9 @@ controller_server:
         dt_hyst: 0.05
         min_samples: 3
         max_samples: 50
-        double min_seg_length: 0.1
-        double max_seg_length: 0.3
-        double max_angle_diff: 0.1
+        min_seg_length: 0.1
+        max_seg_length: 0.3
+        max_angle_diff: 0.1
         overwrite_plan_orientation: false
         allow_init_backward: true
         control_look_ahead_poses: 1
@@ -54,9 +54,9 @@ controller_server:
       robot:
         footprint:
           use_local_costmap: true
-          model: "" # circles | polygon
-          points: ""
-        robot_model: "diff_drive"
+          model: "polygon" # circles | polygon
+          points: "[[1.0, 1.0], [-1.0, 1.0], [-1.0, -1.0], [1.0, -1.0]]"
+        robot_model: "diff_drive" # bicycle | diff_drive
         wheelbase: 1.055
         v_max_x: 0.5
         v_max_x_backwards: 0.0
@@ -134,4 +134,3 @@ controller_server:
         divergence_detection_enable: false
       visualization:
         activate: false
-        
