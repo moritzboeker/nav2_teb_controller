@@ -1,17 +1,13 @@
 #include "nav2_teb_controller/teb_controller.hpp"
 
-namespace nav2_teb_controller
-{
+namespace nav2_teb_controller {
 
-void TEBController::configure(
-  const rclcpp_lifecycle::LifecycleNode::WeakPtr & parent,
-  std::string name,
-  std::shared_ptr<tf2_ros::Buffer> tf,
-  std::shared_ptr<nav2_costmap_2d::Costmap2DROS> costmap_ros)
-{
-  node_        = parent;
+void TEBController::configure(const rclcpp_lifecycle::LifecycleNode::WeakPtr &parent,
+                              std::string name, std::shared_ptr<tf2_ros::Buffer> tf,
+                              std::shared_ptr<nav2_costmap_2d::Costmap2DROS> costmap_ros) {
+  node_ = parent;
   plugin_name_ = name;
-  tf_          = tf;
+  tf_ = tf;
   costmap_ros_ = costmap_ros;
 
   auto node = node_.lock();
@@ -20,38 +16,35 @@ void TEBController::configure(
   }
 
   logger_ = node->get_logger();
-  clock_  = node->get_clock();
+  clock_ = node->get_clock();
 
   // Declare + load all parameters via generated ParamListener
-  param_listener_ = std::make_shared<teb_controller::ParamListener>(
-    node->get_node_parameters_interface());
+  param_listener_ =
+      std::make_shared<teb_controller::ParamListener>(node->get_node_parameters_interface());
   params_ = param_listener_->get_params();
 
   // String → Level mappen
   const std::string log_level_str = params_.FollowPath.log_level;
   const std::map<std::string, rclcpp::Logger::Level> level_map = {
-    {"debug", rclcpp::Logger::Level::Debug},
-    {"info",  rclcpp::Logger::Level::Info},
-    {"warn",  rclcpp::Logger::Level::Warn},
-    {"error", rclcpp::Logger::Level::Error},
-    {"fatal", rclcpp::Logger::Level::Fatal},
+      {"debug", rclcpp::Logger::Level::Debug}, {"info", rclcpp::Logger::Level::Info},
+      {"warn", rclcpp::Logger::Level::Warn},   {"error", rclcpp::Logger::Level::Error},
+      {"fatal", rclcpp::Logger::Level::Fatal},
   };
-  const auto level = level_map.count(log_level_str)
-    ? level_map.at(log_level_str) : rclcpp::Logger::Level::Info;
+  const auto level =
+      level_map.count(log_level_str) ? level_map.at(log_level_str) : rclcpp::Logger::Level::Info;
   logger_.set_level(level);
   rclcpp::get_logger("optimal_planner").set_level(level);
 
   // Tricycle steering angle subscription
   tricycle_state_sub_ = node->create_subscription<ackermann_msgs::msg::AckermannDriveStamped>(
-    "/tricycle_state", rclcpp::QoS(1).best_effort(),
-    [this](const ackermann_msgs::msg::AckermannDriveStamped::SharedPtr msg) {
-      last_ackermann_cmd_ = *msg;
-    });
+      "/tricycle_state", rclcpp::QoS(1).best_effort(),
+      [this](const ackermann_msgs::msg::AckermannDriveStamped::SharedPtr msg) {
+        last_ackermann_cmd_ = *msg;
+      });
 
   // Init Costmap converter
   intra_proc_node_.reset(
-    new rclcpp::Node("costmap_converter", node->get_namespace(), 
-    rclcpp::NodeOptions()));
+      new rclcpp::Node("costmap_converter", node->get_namespace(), rclcpp::NodeOptions()));
   initCostmapConverter();
 
   // All sub-systems take const ref into params_.FollowPath — no copying
@@ -65,47 +58,40 @@ void TEBController::configure(
   const double esdf_hz = params_.FollowPath.obstacles.costmap_converter_rate;
   esdf_update_period_ = rclcpp::Duration::from_seconds(1.0 / esdf_hz);
   // Planner
-  if (params_.FollowPath.hcp.activate)
-  {
+  if (params_.FollowPath.hcp.activate) {
     auto p = std::make_shared<DiscreteTEBPlanner>(params_, footprint_, costmap_ros_.get());
-    auto gs = std::make_shared<VisibilityGraphSearch>(0.5, 0.5); // inflation_radius, robot_radius
+    auto gs = std::make_shared<VisibilityGraphSearch>(0.5, 0.5);  // inflation_radius, robot_radius
     auto hcp = std::make_unique<HomotopyClassPlanner>(params_, footprint_, costmap_ros_.get());
     hcp->setBasePlanner(p);
     hcp->setGraphSearch(gs);
     hcp->setObstacleMap(&esdf_);
-    teb_planner_ = hcp.get();          // PlannerInterface
-    planner_ = std::move(hcp);         // PlannerBase
-  }
-  else
-  {
+    teb_planner_ = hcp.get();   // PlannerInterface
+    planner_ = std::move(hcp);  // PlannerBase
+  } else {
     auto p = std::make_unique<DiscreteTEBPlanner>(params_, footprint_, costmap_ros_.get());
     p->setObstacleMap(&esdf_);
-    teb_planner_ = p.get();          // PlannerInterface
-    planner_ = std::move(p);         // PlannerBase
+    teb_planner_ = p.get();   // PlannerInterface
+    planner_ = std::move(p);  // PlannerBase
   }
   // Visu
   visualizer_ = std::make_unique<TEBVisualizer>(node);
   visualizer_->on_configure();
 }
 
-void TEBController::activate()
-{
+void TEBController::activate() {
   visualizer_->on_activate();
   RCLCPP_INFO(logger_, "TEBController activated");
 }
 
-void TEBController::deactivate()
-{
+void TEBController::deactivate() {
   RCLCPP_INFO(logger_, "TEBController deactivated");
 }
 
-void TEBController::cleanup()
-{
+void TEBController::cleanup() {
   RCLCPP_INFO(logger_, "TEBController cleaned up");
 }
 
-void TEBController::setPlan(const nav_msgs::msg::Path & path)
-{
+void TEBController::setPlan(const nav_msgs::msg::Path &path) {
   global_plan_ = path;
   planner_->clear();
   RCLCPP_INFO(logger_, "New global plan received (%zu poses)", path.poses.size());
@@ -113,10 +99,8 @@ void TEBController::setPlan(const nav_msgs::msg::Path & path)
 }
 
 geometry_msgs::msg::TwistStamped TEBController::computeVelocityCommands(
-  const geometry_msgs::msg::PoseStamped& pose,
-  const geometry_msgs::msg::Twist& velocity,
-  nav2_core::GoalChecker* /*goal_checker*/)
-{
+    const geometry_msgs::msg::PoseStamped &pose, const geometry_msgs::msg::Twist &velocity,
+    nav2_core::GoalChecker * /*goal_checker*/) {
   geometry_msgs::msg::TwistStamped cmd_vel;
   cmd_vel.header.stamp = clock_->now();
   cmd_vel.header.frame_id = costmap_ros_->getGlobalFrameID();
@@ -124,28 +108,31 @@ geometry_msgs::msg::TwistStamped TEBController::computeVelocityCommands(
 
   // 1. Refresh dynamic parameters
   if (param_listener_->is_old(params_))
-    params_ = param_listener_->get_params(); //later, needs_full_rebuild_ = true;
+    params_ = param_listener_->get_params();  // later, needs_full_rebuild_ = true;
 
   // 2. Extract local lookahead window
   // prune global plan to cut off parts of the past (spatially before the robot)
   const double prune_dist = params_.FollowPath.trajectory.global_plan_prune_distance;
-  const double global_plan_lookahead = params_.FollowPath.trajectory.max_global_plan_lookahead_dist;
+  const double global_plan_lookahead =
+      params_.FollowPath.trajectory.max_global_plan_lookahead_dist;
   double path_length_time_based = velocity.linear.x * 5.0;
-  double path_length = std::clamp(1.0 * global_plan_lookahead, path_length_time_based, global_plan_lookahead);
+  double path_length =
+      std::clamp(1.0 * global_plan_lookahead, path_length_time_based, global_plan_lookahead);
   pruneGlobalPlan(*tf_, pose, global_plan_, prune_dist);
+  int goal_idx;
   auto transformed_plan = transformAndTrimPlan(
-    *tf_, global_plan_, pose, *costmap_ros_->getCostmap(),
-    costmap_ros_->getGlobalFrameID(), clock_->now(), path_length);
+      *tf_, global_plan_, pose, *costmap_ros_->getCostmap(), costmap_ros_->getGlobalFrameID(),
+      clock_->now(), path_length, &goal_idx);
 
-  if (transformed_plan.poses.empty())
-  {
+  if (transformed_plan.poses.empty()) {
     RCLCPP_INFO(logger_, "TEBController: Empty plan.");
     return cmd_vel;
   }
   // Overwrite start with actual robot pose so TEB can use plan as initial trajectory
   if (transformed_plan.poses.size() == 1)  // plan only contains the goal
-    transformed_plan.poses.insert(transformed_plan.poses.begin(), geometry_msgs::msg::PoseStamped());
-  transformed_plan.poses.front()= pose;
+    transformed_plan.poses.insert(transformed_plan.poses.begin(),
+                                  geometry_msgs::msg::PoseStamped());
+  transformed_plan.poses.front() = pose;
 
   // Update obstacles
   costmap_converter_msgs::msg::ObstacleArrayMsg::ConstSharedPtr obstacles_ptr;
@@ -154,8 +141,7 @@ geometry_msgs::msg::TwistStamped TEBController::computeVelocityCommands(
   teb_planner_->updateObstacleContainer(obstacles_ptr);
   // Update ESDF
   const rclcpp::Time now = clock_->now();
-  if ((now - last_esdf_update_) >= esdf_update_period_)
-  {
+  if ((now - last_esdf_update_) >= esdf_update_period_) {
     std::unique_lock lock(*costmap_ros_->getCostmap()->getMutex());
     esdf_.update(*costmap_ros_->getCostmap());
     last_esdf_update_ = now;
@@ -168,17 +154,19 @@ geometry_msgs::msg::TwistStamped TEBController::computeVelocityCommands(
   // configureBackupModes(transformed_plan, goal_idx);
 
   // 3. Plan, wart start or reinit
+  bool final_goal =
+      (goal_idx == (global_plan_.poses.size() - 1)) || params_.FollowPath.optimizer.fix_goal;
+  teb_planner_->setFixedGoal(final_goal);
   teb_planner_->setFeedback(last_ackermann_cmd_.drive);
   bool success = planner_->plan(transformed_plan, velocity);
-  if (!success || planner_->hasDiverged())
-  {
+  if (!success || planner_->hasDiverged()) {
     planner_->clear();
     RCLCPP_INFO(logger_, "TEBController: Planner failed.");
     return cmd_vel;
   }
 
   // 4. Get TEB
-  const auto& teb = teb_planner_->getTEB();
+  const auto &teb = teb_planner_->getTEB();
 
   // 5. Check for collision
   const double feasibility_check = params_.FollowPath.obstacles.feasibility_check;
@@ -196,8 +184,7 @@ geometry_msgs::msg::TwistStamped TEBController::computeVelocityCommands(
 
   // 6. Get velocity command
   const bool activate = params_.FollowPath.path_tracker.activate;
-  if (activate && !stop_cmd)
-  {
+  if (activate && !stop_cmd) {
     const double dt_ref = params_.FollowPath.trajectory.dt_ref;
     const int lookahead = params_.FollowPath.trajectory.control_look_ahead_poses;
     const double min_look_ahead_time = params_.FollowPath.trajectory.control_min_look_ahead_time;
@@ -212,7 +199,8 @@ geometry_msgs::msg::TwistStamped TEBController::computeVelocityCommands(
     const double wheelbase = params_.FollowPath.robot.wheelbase;
     const bool use_proportional_saturation = params_.FollowPath.robot.use_proportional_saturation;
     double current_angle = last_ackermann_cmd_.drive.steering_angle;
-    saturateVelocity(cmd_vel.twist, v_max_x, v_max_y, v_max_theta, v_max_x_backwards, use_proportional_saturation);
+    saturateVelocity(cmd_vel.twist, v_max_x, v_max_y, v_max_theta, v_max_x_backwards,
+                     use_proportional_saturation);
     // Saturate steering angle
     auto dt = (clock_->now() - last_cmd_vel_.header.stamp).nanoseconds() / 1e9;
     saturateSteeringAngle(cmd_vel.twist, current_angle, steering_rate_max, wheelbase, dt);
@@ -221,37 +209,30 @@ geometry_msgs::msg::TwistStamped TEBController::computeVelocityCommands(
   return cmd_vel;
 }
 
-void TEBController::setSpeedLimit(
-  const double & speed_limit,
-  const bool & percentage)
-{
+void TEBController::setSpeedLimit(const double &speed_limit, const bool &percentage) {
   speed_limit_ = speed_limit;
   speed_limit_is_percentage_ = percentage;
 
-  RCLCPP_DEBUG(logger_,
-    "TEBController speed limit set to %.2f (%s)",
-    speed_limit_,
-    speed_limit_is_percentage_ ? "percentage" : "absolute");
+  RCLCPP_DEBUG(logger_, "TEBController speed limit set to %.2f (%s)", speed_limit_,
+               speed_limit_is_percentage_ ? "percentage" : "absolute");
 }
 
-void TEBController::initCostmapConverter()
-{
-  std::string odom_topic = "odom";//node_.get_parameter();
+void TEBController::initCostmapConverter() {
+  std::string odom_topic = "odom";  // node_.get_parameter();
   std::string plugin_name = params_.FollowPath.obstacles.costmap_converter_plugin;
   double update_freq = params_.FollowPath.obstacles.costmap_converter_rate;
   bool extra_thread = params_.FollowPath.obstacles.costmap_converter_spin_thread;
-  if (plugin_name.empty()) 
-  {
+  if (plugin_name.empty()) {
     RCLCPP_INFO(logger_, "No costmap converter plugin specified. "
-      "All occupied costmap cells are treated as point obstacles.");
+                         "All occupied costmap cells are treated as point obstacles.");
     return;
   }
-  try
-  {
+  try {
     auto costmap = costmap_ros_->getCostmap();
     costmap_converter_ = costmap_converter_loader_.createSharedInstance(plugin_name);
     std::string converter_name = costmap_converter_loader_.getName(plugin_name);
-    RCLCPP_INFO(logger_, "library path : %s", costmap_converter_loader_.getClassLibraryPath(plugin_name).c_str());
+    RCLCPP_INFO(logger_, "library path : %s",
+                costmap_converter_loader_.getClassLibraryPath(plugin_name).c_str());
     std::replace(converter_name.begin(), converter_name.end(), ':', '/');
 
     costmap_converter_->setOdomTopic(odom_topic);
@@ -260,11 +241,10 @@ void TEBController::initCostmapConverter()
     const auto rate = std::make_shared<rclcpp::Rate>(update_freq);
     costmap_converter_->startWorker(rate, costmap, extra_thread);
     RCLCPP_INFO(logger_, "Costmap conversion plugin %s loaded.", plugin_name.c_str());
-  }
-  catch(pluginlib::PluginlibException& ex)
-  {
+  } catch (pluginlib::PluginlibException &ex) {
     RCLCPP_INFO(logger_,
-                "The specified costmap converter plugin cannot be loaded. Error message: %s", ex.what());
+                "The specified costmap converter plugin cannot be loaded. Error message: %s",
+                ex.what());
     costmap_converter_.reset();
   }
 }

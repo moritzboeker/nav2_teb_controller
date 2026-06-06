@@ -2,11 +2,11 @@
 #pragma once
 
 #include <Eigen/Dense>
-#include <vector>
-#include <limits>
-#include <cmath>
 #include <algorithm>
+#include <cmath>
+#include <limits>
 #include <stdexcept>
+#include <vector>
 
 // Thin ROS2 include — nur für den Wrapper, nicht für den Core-Algorithmus
 #include <nav2_costmap_2d/costmap_2d.hpp>
@@ -31,15 +31,14 @@ namespace nav2_teb_controller {
 /// update() and query() must not be called concurrently.
 /// query() is safe to call concurrently from multiple threads
 /// (read-only after update).
-class ObstacleMap2D
-{
+class ObstacleMap2D {
 public:
   // ──────────────────────────────────────────────
   // Types
   // ──────────────────────────────────────────────
 
   struct QueryResult {
-    double          distance;  ///< Euclidean distance to nearest obstacle [m]
+    double distance;           ///< Euclidean distance to nearest obstacle [m]
     Eigen::Vector2d gradient;  ///< Unit vector pointing away from obstacle
                                ///< (satisfies |gradient| == 1 everywhere)
   };
@@ -57,15 +56,12 @@ public:
   /// @param origin_x World X of cell (0,0) center [m]
   /// @param origin_y World Y of cell (0,0) center [m]
   /// @param lethal_threshold  Cells >= this value are treated as obstacle
-  void update(const uint8_t* data,
-              unsigned nx, unsigned ny,
-              double res,
-              double origin_x, double origin_y,
-              uint8_t lethal_threshold = 253);
+  void update(const uint8_t *data, unsigned nx, unsigned ny, double res, double origin_x,
+              double origin_y, uint8_t lethal_threshold = 253);
 
   /// @brief Convenience wrapper for nav2_costmap_2d::Costmap2D.
   ///        Internally calls update(data, nx, ny, res, ox, oy).
-  void update(const nav2_costmap_2d::Costmap2D& costmap);
+  void update(const nav2_costmap_2d::Costmap2D &costmap);
 
   /// @brief Query distance and gradient at world coordinates (wx, wy).
   ///
@@ -84,14 +80,14 @@ public:
   // Accessors (useful for visualization / Layer export)
   // ──────────────────────────────────────────────
 
-  [[nodiscard]] unsigned    sizeX()      const { return nx_; }
-  [[nodiscard]] unsigned    sizeY()      const { return ny_; }
-  [[nodiscard]] double      resolution() const { return res_; }
-  [[nodiscard]] double      originX()    const { return origin_x_; }
-  [[nodiscard]] double      originY()    const { return origin_y_; }
+  [[nodiscard]] unsigned sizeX() const { return nx_; }
+  [[nodiscard]] unsigned sizeY() const { return ny_; }
+  [[nodiscard]] double resolution() const { return res_; }
+  [[nodiscard]] double originX() const { return origin_x_; }
+  [[nodiscard]] double originY() const { return origin_y_; }
 
   /// @brief Raw EDT grid (float, meters), row-major. Useful for publishing.
-  [[nodiscard]] const std::vector<float>& rawGrid() const { return edt_; }
+  [[nodiscard]] const std::vector<float> &rawGrid() const { return edt_; }
 
 private:
   // ──────────────────────────────────────────────
@@ -99,7 +95,7 @@ private:
   // ──────────────────────────────────────────────
 
   /// Phase 1: 1D column scan → squared distances in Y direction
-  void phase1_columnScan(const std::vector<bool>& occ);
+  void phase1_columnScan(const std::vector<bool> &occ);
 
   /// Phase 2: 1D parabola envelope per row → final 2D squared distances
   void phase2_rowScan();
@@ -113,21 +109,19 @@ private:
   }
 
   [[nodiscard]] inline bool inBounds(int x, int y) const {
-    return x >= 0 && y >= 0 &&
-           static_cast<unsigned>(x) < nx_ &&
-           static_cast<unsigned>(y) < ny_;
+    return x >= 0 && y >= 0 && static_cast<unsigned>(x) < nx_ && static_cast<unsigned>(y) < ny_;
   }
 
   // ──────────────────────────────────────────────
   // State
   // ──────────────────────────────────────────────
 
-  std::vector<float>  edt_;     ///< EDT in meters, row-major [ny × nx]
-  std::vector<double> g_;       ///< Intermediate column-scan buffer (squared cells)
+  std::vector<float> edt_;  ///< EDT in meters, row-major [ny × nx]
+  std::vector<double> g_;   ///< Intermediate column-scan buffer (squared cells)
 
   unsigned nx_{0}, ny_{0};
-  double   res_{0.05};
-  double   origin_x_{0.0}, origin_y_{0.0};
+  double res_{0.05};
+  double origin_x_{0.0}, origin_y_{0.0};
 
   static constexpr double kOutOfBoundsDist = 1e6;
 };

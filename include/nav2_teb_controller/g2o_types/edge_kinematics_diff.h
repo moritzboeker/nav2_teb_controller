@@ -53,7 +53,9 @@ public:
     Eigen::Vector2d deltaS = conf2->position() - conf1->position();
 
     // non holonomic constraint
-    _error[0] = std::abs( ( cos(conf1->theta())+cos(conf2->theta()) ) * deltaS[1] - ( sin(conf1->theta())+sin(conf2->theta()) ) * deltaS[0] );
+    _error[0] = std::abs( 
+                ( cos(conf1->theta())+cos(conf2->theta()) ) * deltaS[1] - 
+                ( sin(conf1->theta())+sin(conf2->theta()) ) * deltaS[0] );
 
     // positive-drive-direction constraint
     Eigen::Vector2d angle_vec ( cos(conf1->theta()), sin(conf1->theta()) );	   

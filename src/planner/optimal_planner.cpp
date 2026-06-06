@@ -2,11 +2,10 @@
 
 namespace nav2_teb_controller {
 
-DiscreteTEBPlanner::DiscreteTEBPlanner(
-  const teb_controller::Params& params,
-  const Footprint& footprint,
-  nav2_costmap_2d::Costmap2DROS* costmap_ros) : params_(params), footprint_(footprint), costmap_ros_(costmap_ros)
-{
+DiscreteTEBPlanner::DiscreteTEBPlanner(const teb_controller::Params &params,
+                                       const Footprint &footprint,
+                                       nav2_costmap_2d::Costmap2DROS *costmap_ros)
+    : params_(params), footprint_(footprint), costmap_ros_(costmap_ros) {
   optimizer_ = initOptimizer();
   // obstacles_ = obstacles; // implement later
   // via_points_ = via_points;  // implement later
@@ -14,39 +13,43 @@ DiscreteTEBPlanner::DiscreteTEBPlanner(
   // prefer_rotdir_ = RotType::none;  // implement later
 
   vel_start_ = {false, geometry_msgs::msg::Twist()};
-  vel_goal_  = {false, geometry_msgs::msg::Twist()};
+  vel_goal_ = {false, geometry_msgs::msg::Twist()};
 
   initialized_ = true;
 }
 
-std::shared_ptr<g2o::SparseOptimizer> DiscreteTEBPlanner::initOptimizer()
-{
+std::shared_ptr<g2o::SparseOptimizer> DiscreteTEBPlanner::initOptimizer() {
   // Parameter aus Config
   std::string solver_type = params_.FollowPath.optimizer.solver;
   std::string algorithm_type = params_.FollowPath.optimizer.algorithm;
-  
+
   // Linear Solver Factory
   std::unique_ptr<g2o::BlockSolverX> block_solver;
-  
-  if (solver_type == "cholmod"){
-    auto linear_solver = std::make_unique<g2o::LinearSolverCholmod<g2o::BlockSolverX::PoseMatrixType>>();
+
+  if (solver_type == "cholmod") {
+    auto linear_solver =
+        std::make_unique<g2o::LinearSolverCholmod<g2o::BlockSolverX::PoseMatrixType>>();
     linear_solver->setBlockOrdering(true);
     block_solver = std::make_unique<g2o::BlockSolverX>(std::move(linear_solver));
   } else if (solver_type == "eigen") {
-    auto linear_solver = std::make_unique<g2o::LinearSolverEigen<g2o::BlockSolverX::PoseMatrixType>>();
+    auto linear_solver =
+        std::make_unique<g2o::LinearSolverEigen<g2o::BlockSolverX::PoseMatrixType>>();
     linear_solver->setBlockOrdering(true);
     block_solver = std::make_unique<g2o::BlockSolverX>(std::move(linear_solver));
   } else if (solver_type == "csparse") {
-    auto linear_solver = std::make_unique<g2o::LinearSolverCSparse<g2o::BlockSolverX::PoseMatrixType>>();
+    auto linear_solver =
+        std::make_unique<g2o::LinearSolverCSparse<g2o::BlockSolverX::PoseMatrixType>>();
     linear_solver->setBlockOrdering(true);
     block_solver = std::make_unique<g2o::BlockSolverX>(std::move(linear_solver));
   } else if (solver_type == "dense") {
-    auto linear_solver = std::make_unique<g2o::LinearSolverDense<g2o::BlockSolverX::PoseMatrixType>>();
+    auto linear_solver =
+        std::make_unique<g2o::LinearSolverDense<g2o::BlockSolverX::PoseMatrixType>>();
     block_solver = std::make_unique<g2o::BlockSolverX>(std::move(linear_solver));
   } else {
     RCLCPP_ERROR(rclcpp::get_logger("optimal_planner"),
-      "Unknown solver '%s' - fallback to cholmod", solver_type.c_str());
-    auto linear_solver = std::make_unique<g2o::LinearSolverCholmod<g2o::BlockSolverX::PoseMatrixType>>();
+                 "Unknown solver '%s' - fallback to cholmod", solver_type.c_str());
+    auto linear_solver =
+        std::make_unique<g2o::LinearSolverCholmod<g2o::BlockSolverX::PoseMatrixType>>();
     linear_solver->setBlockOrdering(true);
     block_solver = std::make_unique<g2o::BlockSolverX>(std::move(linear_solver));
   }
@@ -58,24 +61,22 @@ std::shared_ptr<g2o::SparseOptimizer> DiscreteTEBPlanner::initOptimizer()
   } else if (algorithm_type == "levenberg_marquardt") {
     algorithm = std::make_unique<g2o::OptimizationAlgorithmLevenberg>(std::move(block_solver));
   } else {
-    RCLCPP_ERROR(rclcpp::get_logger("optimal_planner"),
-      "Unknown algorithm '%s' - fallback to lm", algorithm_type.c_str());
+    RCLCPP_ERROR(rclcpp::get_logger("optimal_planner"), "Unknown algorithm '%s' - fallback to lm",
+                 algorithm_type.c_str());
     algorithm = std::make_unique<g2o::OptimizationAlgorithmLevenberg>(std::move(block_solver));
   }
-  
+
   std::shared_ptr<g2o::SparseOptimizer> optimizer = std::make_shared<g2o::SparseOptimizer>();
   optimizer->setAlgorithm(algorithm.release());
   optimizer->initMultiThreading();
-  
-  RCLCPP_INFO(rclcpp::get_logger("optimal_planner"), 
-    "Optimizer configured: %s + %s", solver_type.c_str(), algorithm_type.c_str());
+
+  RCLCPP_INFO(rclcpp::get_logger("optimal_planner"), "Optimizer configured: %s + %s",
+              solver_type.c_str(), algorithm_type.c_str());
   return optimizer;
 }
 
-bool DiscreteTEBPlanner::plan(
-  const nav_msgs::msg::Path& initial_plan,
-  const geometry_msgs::msg::Twist& start_vel)
-{
+bool DiscreteTEBPlanner::plan(const nav_msgs::msg::Path &initial_plan,
+                              const geometry_msgs::msg::Twist &start_vel) {
   if (!initialized_)
     return false;
   if (initial_plan.poses.empty())
@@ -89,60 +90,56 @@ bool DiscreteTEBPlanner::plan(
   int min_samples = params_.FollowPath.trajectory.min_samples;
   int no_inner_iterations = params_.FollowPath.optimizer.no_inner_iterations;
   int no_outer_iterations = params_.FollowPath.optimizer.no_outer_iterations;
-  bool overwrite_plan_orientation = params_.FollowPath.trajectory.overwrite_plan_orientation; 
+  bool overwrite_plan_orientation = params_.FollowPath.trajectory.overwrite_plan_orientation;
   bool allow_init_backward = params_.FollowPath.trajectory.allow_init_backward;
   bool free_goal_vel = params_.FollowPath.optimizer.free_goal_vel;
   bool final_goal = params_.FollowPath.optimizer.fix_goal;
 
-  if (!teb_.isInit())
-  {
+  if (!teb_.isInit()) {
     // Cold start
-    RCLCPP_INFO(rclcpp::get_logger("optimal_planner"), 
-        "DiscreteTEBPlanner: Initialize new trajectory.");
-    initFromPath(teb_, initial_plan, v_max_x, v_max_theta, 
-      overwrite_plan_orientation, min_samples, allow_init_backward, final_goal);
-  }
-  else
-  {
+    RCLCPP_INFO(rclcpp::get_logger("optimal_planner"),
+                "DiscreteTEBPlanner: Initialize new trajectory.");
+    initFromPath(teb_, initial_plan, v_max_x, v_max_theta, overwrite_plan_orientation, min_samples,
+                 allow_init_backward, final_goal);
+  } else {
     // Warm start: check if goal has changed significantly
     const PoseSE2 start{initial_plan.poses.front().pose};
     const PoseSE2 goal{initial_plan.poses.back().pose};
     const double dist_to_goal = (goal.position() - teb_.backPose().position()).norm();
-    const double angle_to_goal = std::abs(angles::normalize_angle( goal.theta() - teb_.backPose().theta()));
+    const double angle_to_goal =
+        std::abs(angles::normalize_angle(goal.theta() - teb_.backPose().theta()));
     const bool goal_changed = dist_to_goal > reinit_dist || angle_to_goal > reinit_angle;
 
     if (teb_.sizePoses() > 0 && !goal_changed)
       updateAndPrune(teb_, start, goal, min_samples);  // actual warm start
-    else
-    {
+    else {
       // Goal too far away → reinit
-      RCLCPP_INFO(rclcpp::get_logger("optimal_planner"), 
-        "DiscreteTEBPlanner: Goal to far away. Initialize new trajectory.");
+      RCLCPP_INFO(rclcpp::get_logger("optimal_planner"),
+                  "DiscreteTEBPlanner: Goal to far away. Initialize new trajectory.");
       teb_.clear();
-      initFromPath(teb_, initial_plan, v_max_x, v_max_theta,
-        overwrite_plan_orientation, min_samples, allow_init_backward, final_goal);
+      initFromPath(teb_, initial_plan, v_max_x, v_max_theta, overwrite_plan_orientation,
+                   min_samples, allow_init_backward, final_goal);
     }
   }
   // Set start velocity
   setVelocityStart(start_vel);
   // Goal velocity = zero (fixed)
-  vel_goal_.first  = !free_goal_vel;
+  vel_goal_.first = !free_goal_vel;
   vel_goal_.second = geometry_msgs::msg::Twist();
 
   return optimizeTEB(no_inner_iterations, no_outer_iterations, false);
 }
 
-void DiscreteTEBPlanner::clear()
-{
+void DiscreteTEBPlanner::clear() {
   clearGraph();
   teb_.clear();
 }
 
-bool DiscreteTEBPlanner::optimizeTEB(int no_inner_iterations, int no_outer_iterations, bool compute_cost_afterwards)
-{
+bool DiscreteTEBPlanner::optimizeTEB(int no_inner_iterations, int no_outer_iterations,
+                                     bool compute_cost_afterwards) {
   if (!params_.FollowPath.optimizer.activate)
     return false;
-  
+
   bool success = false;
   weight_multiplier_ = 1.0;
   double chi2_old_ = INFINITY;
@@ -161,22 +158,19 @@ bool DiscreteTEBPlanner::optimizeTEB(int no_inner_iterations, int no_outer_itera
   double adapt_factor = params_.FollowPath.weights.weight_adapt_factor;
 
   if (auto_resize)
-    autoResize(teb_, dt_ref, dt_hyst, min_seg_length, max_seg_length, max_angle_diff,
-        min_samples, max_samples, fast_mode);
+    autoResize(teb_, dt_ref, dt_hyst, min_seg_length, max_seg_length, max_angle_diff, min_samples,
+               max_samples, fast_mode);
 
   success = buildGraph();
-  if (!success)
-  {
+  if (!success) {
     RCLCPP_INFO(rclcpp::get_logger("optimal_planner"), "Building graph failed.");
     clearGraph();
     return false;
   }
 
-  for (int i = 0; i < no_outer_iterations; ++i)
-  {
+  for (int i = 0; i < no_outer_iterations; ++i) {
     success = optimizeGraph(no_inner_iterations, true);
-    if (!success)
-    {
+    if (!success) {
       RCLCPP_INFO(rclcpp::get_logger("optimal_planner"), "Optimizing graph failed.");
       clearGraph();
       return false;
@@ -192,12 +186,12 @@ bool DiscreteTEBPlanner::optimizeTEB(int no_inner_iterations, int no_outer_itera
 
   if (compute_cost_afterwards)
     computeCurrentCost();
-    
+
   writeBackOptimizedValues();
   clearGraph();
 
   RCLCPP_DEBUG(rclcpp::get_logger("optimal_planner"), "DiscreteTEBPlanner: TEB optimized.");
-  
+
   /*
   for(int i=0; i<no_outer_iterations; ++i)
   {
@@ -207,17 +201,17 @@ bool DiscreteTEBPlanner::optimizeTEB(int no_inner_iterations, int no_outer_itera
          min_samples, max_samples, fast_mode);
 
     success = buildGraph();
-    if (!success) 
+    if (!success)
     {
-      RCLCPP_ERROR(rclcpp::get_logger("optimal_planner"), 
+      RCLCPP_ERROR(rclcpp::get_logger("optimal_planner"),
         "DiscreteTEBPlanner: Building graph failed.");
       clearGraph();
       return false;
     }
     success = optimizeGraph(no_inner_iterations, false);
-    if (!success) 
+    if (!success)
     {
-      RCLCPP_ERROR(rclcpp::get_logger("optimal_planner"), 
+      RCLCPP_ERROR(rclcpp::get_logger("optimal_planner"),
         "DiscreteTEBPlanner: Optimizing graph failed.");
       clearGraph();
       return false;
@@ -225,41 +219,38 @@ bool DiscreteTEBPlanner::optimizeTEB(int no_inner_iterations, int no_outer_itera
     double chi2_current = optimizer_->chi2();
     optimized_ = (chi2_old_ - chi2_current < 0.001);
     chi2_old_ = chi2_current;
-    
+
     // optimized_ = true;
-    
+
     // compute cost vec only in the last iteration
     if (compute_cost_afterwards && i==no_outer_iterations-1)
       computeCurrentCost();
-      
+
     writeBackOptimizedValues();  // ← NEU: Werte zurück in teb_
     clearGraph();
 
-    RCLCPP_DEBUG(rclcpp::get_logger("optimal_planner"), 
+    RCLCPP_DEBUG(rclcpp::get_logger("optimal_planner"),
         "DiscreteTEBPlanner: TEB optimized.");
-  
+
     weight_multiplier_ *= adapt_factor;
   }
   */
   return true;
 }
 
-bool DiscreteTEBPlanner::buildGraph()
-{
+bool DiscreteTEBPlanner::buildGraph() {
   if (!optimizer_->edges().empty() || !optimizer_->vertices().empty())
     return false;
 
   // read params
   bool divergence_detection = params_.FollowPath.recovery.divergence_detection_enable;
   std::string robot_model = params_.FollowPath.robot.robot_model;
-  RCLCPP_DEBUG(rclcpp::get_logger("optimal_planner"), 
-        "DiscreteTEBPlanner: Build graph.");
+  RCLCPP_DEBUG(rclcpp::get_logger("optimal_planner"), "DiscreteTEBPlanner: Build graph.");
   optimizer_->setComputeBatchStatistics(divergence_detection);
-  
+
   // add TEB vertices
   AddTEBVertices();
-  RCLCPP_DEBUG(rclcpp::get_logger("optimal_planner"), 
-        "DiscreteTEBPlanner: Added vertices.");
+  RCLCPP_DEBUG(rclcpp::get_logger("optimal_planner"), "DiscreteTEBPlanner: Added vertices.");
 
   const bool holonomic = params_.FollowPath.robot.v_max_y > 0;
 
@@ -267,66 +258,54 @@ bool DiscreteTEBPlanner::buildGraph()
   // Generic Edges
   // AddEdgesVelocity();
   if (!holonomic)
-    addEdgesGeneric<EdgeVelocity, 2>(
-      {2, 1, 1, 0, 2},
-      {params_.FollowPath.weights.weight_v_max_x,
-        params_.FollowPath.weights.weight_v_max_theta});
+    addEdgesGeneric<EdgeVelocity, 2>({2, 1, 1, 0, 2},
+                                     {params_.FollowPath.weights.weight_v_max_x,
+                                      params_.FollowPath.weights.weight_v_max_theta});
   else
     addEdgesGeneric<EdgeVelocityHolonomic, 3>(
-      {2, 1, 1, 0, 3},
-      {params_.FollowPath.weights.weight_v_max_x,
-        params_.FollowPath.weights.weight_v_max_y,
-        params_.FollowPath.weights.weight_v_max_theta});
+        {2, 1, 1, 0, 3},
+        {params_.FollowPath.weights.weight_v_max_x, params_.FollowPath.weights.weight_v_max_y,
+         params_.FollowPath.weights.weight_v_max_theta});
   // AddEdgesTimeOptimal();
-  addEdgesGeneric<EdgeTimeOptimal, 1>(
-    {0, 1, 1, 0, 1},
-    {params_.FollowPath.weights.weight_time_optimal});
+  addEdgesGeneric<EdgeTimeOptimal, 1>({0, 1, 1, 0, 1},
+                                      {params_.FollowPath.weights.weight_time_optimal});
   // AddEdgesShortestPath();
-  addEdgesGeneric<EdgeShortestPath, 1>(
-    {2, 0, 1, 0, 1},
-    {params_.FollowPath.weights.weight_shortest_path});
+  addEdgesGeneric<EdgeShortestPath, 1>({2, 0, 1, 0, 1},
+                                       {params_.FollowPath.weights.weight_shortest_path});
   // AddEdgesPathSmoothness();
-  addEdgesGeneric<EdgePathSmoothness, 1>(
-    {2, 0, 1, 0, 1},
-    {params_.FollowPath.weights.weight_shortest_path});
+  addEdgesGeneric<EdgePathSmoothness, 1>({2, 0, 1, 0, 1},
+                                         {params_.FollowPath.weights.weight_shortest_path});
   // addEdgesGeneric<EdgeJerk, 2>(
   //     {4, 3, 3, 0, 2},
   //     {params_.FollowPath.weights.weight_jerk_max_x,
   //     params_.FollowPath.weights.weight_jerk_max_theta});
   // AddEdgesSnap();
-  addEdgesGeneric<EdgeSnap, 2>(
-      {5, 4, 4, 0, 2},
-      {params_.FollowPath.weights.weight_snap_max_x,
-      params_.FollowPath.weights.weight_snap_max_theta});  
+  addEdgesGeneric<EdgeSnap, 2>({5, 4, 4, 0, 2},
+                               {params_.FollowPath.weights.weight_snap_max_x,
+                                params_.FollowPath.weights.weight_snap_max_theta});
   // AddEdgesG3Continuity();
-  addEdgesGeneric<EdgeG3Continuity, 1>(
-    {3, 0, 2, 0, 1},
-    {params_.FollowPath.weights.weight_g3_continuity});
+  addEdgesGeneric<EdgeG3Continuity, 1>({3, 0, 2, 0, 1},
+                                       {params_.FollowPath.weights.weight_g3_continuity});
   // AddEdgesSteeringAngleGoal();
   addEdgesGeneric<EdgeSteeringAngleGoal, 1>(
-    {5, 0, 0, -1, 1},
-    {params_.FollowPath.weights.weight_zero_steering_angle_goal});
+      {5, 0, 0, -1, 1}, {params_.FollowPath.weights.weight_zero_steering_angle_goal});
   // AddEdgesGoalAngularVelocityZero();
   addEdgesGeneric<EdgeGoalAngularVelocityZero, 1>(
-    {5, 4, 0, -1, 1},
-    {params_.FollowPath.weights.weight_goal_angular_vel_zero});
+      {5, 4, 0, -1, 1}, {params_.FollowPath.weights.weight_goal_angular_vel_zero});
 
   // Kinematic Edges
   if (robot_model == "diff_drive")
     // AddEdgesKinematicsDiffDrive();
     addEdgesGeneric<EdgeKinematicsDiffDrive, 2>(
-      {2, 0, 1, 0, 2},
-      {params_.FollowPath.weights.weight_kinematics_nh,
-      params_.FollowPath.weights.weight_kinematics_forward_drive});
+        {2, 0, 1, 0, 2}, {params_.FollowPath.weights.weight_kinematics_nh,
+                          params_.FollowPath.weights.weight_kinematics_forward_drive});
   else if (robot_model == "ackermann")
     // AddEdgesKinematicsCarlike();
     addEdgesGeneric<EdgeKinematicsCarlike, 2>(
-      {2, 0, 1, 0, 2},
-      {params_.FollowPath.weights.weight_kinematics_nh,
-      params_.FollowPath.weights.weight_kinematics_turning_radius});
+        {2, 0, 1, 0, 2}, {params_.FollowPath.weights.weight_kinematics_nh,
+                          params_.FollowPath.weights.weight_kinematics_turning_radius});
 
-  RCLCPP_DEBUG(rclcpp::get_logger("optimal_planner"), 
-        "DiscreteTEBPlanner: Added generic edges.");
+  RCLCPP_DEBUG(rclcpp::get_logger("optimal_planner"), "DiscreteTEBPlanner: Added generic edges.");
 
   // Add Edges with measurement
   AddEdgesAcceleration();
@@ -334,9 +313,9 @@ bool DiscreteTEBPlanner::buildGraph()
   AddEdgesStartSteeringAngle();
   AddEdgesJerk();
 
-  RCLCPP_DEBUG(rclcpp::get_logger("optimal_planner"), 
-        "DiscreteTEBPlanner: Added measurement edges.");
-  
+  RCLCPP_DEBUG(rclcpp::get_logger("optimal_planner"),
+               "DiscreteTEBPlanner: Added measurement edges.");
+
   // Via points
   AddEdgesViaPoints();
 
@@ -344,19 +323,17 @@ bool DiscreteTEBPlanner::buildGraph()
   // AddEdgesObstacles();
   addEdgesESDFObstacles();
 
-  RCLCPP_DEBUG(rclcpp::get_logger("optimal_planner"), 
-        "DiscreteTEBPlanner: Added obstacle edges.");
+  RCLCPP_DEBUG(rclcpp::get_logger("optimal_planner"), "DiscreteTEBPlanner: Added obstacle edges.");
 
   // Recovery
   AddEdgesPreferRotDir();
 
-  RCLCPP_DEBUG(rclcpp::get_logger("optimal_planner"), 
-        "DiscreteTEBPlanner: Added edges.");
+  RCLCPP_DEBUG(rclcpp::get_logger("optimal_planner"), "DiscreteTEBPlanner: Added edges.");
 
   optimizer_->initializeOptimization();
   return true;
   /*
-  auto safe_add = [&](const char* name, auto&& fn) -> bool 
+  auto safe_add = [&](const char* name, auto&& fn) -> bool
   {
     try {
       fn();
@@ -410,157 +387,212 @@ bool DiscreteTEBPlanner::buildGraph()
   */
 }
 
-bool DiscreteTEBPlanner::optimizeGraph(int no_inner_iterations, bool clear_after)
-{
+bool DiscreteTEBPlanner::optimizeGraph(int no_inner_iterations, bool clear_after) {
   // read params
   double v_max_x = params_.FollowPath.robot.v_max_x;
   int min_samples = params_.FollowPath.trajectory.min_samples;
   bool verbose = params_.FollowPath.optimizer.verbose;
 
   // Robot Max Velocity is smaller than 0.01m/s. Optimizing aborted.
-  if (v_max_x < 0.01)
-  {
-    RCLCPP_INFO(rclcpp::get_logger("optimal_planner"), 
-      "vmax too small.");
+  if (v_max_x < 0.01) {
+    RCLCPP_INFO(rclcpp::get_logger("optimal_planner"), "vmax too small.");
     if (clear_after)
       clearGraph();
-    return false;	
+    return false;
   }
-  
+
   // TEB is empty or has too less elements. Skipping optimization.
-  if (!teb_.isInit() || teb_.sizePoses() < static_cast<std::size_t>(min_samples))
-  {
-    RCLCPP_INFO(rclcpp::get_logger("optimal_planner"), 
-      "teb no initialized.");
+  if (!teb_.isInit() || teb_.sizePoses() < static_cast<std::size_t>(min_samples)) {
+    RCLCPP_INFO(rclcpp::get_logger("optimal_planner"), "teb no initialized.");
     if (clear_after)
       clearGraph();
-    return false;	
+    return false;
   }
-  
+
   optimizer_->setVerbose(verbose);
   // optimizer_->initializeOptimization();
 
   int iter = optimizer_->optimize(no_inner_iterations);
+  computeCurrentCost();
 
   // Optimization failed;
-  if (iter == 0) 
-  {
-    RCLCPP_INFO(rclcpp::get_logger("optimal_planner"), 
-      "Optimization failed.");
+  if (iter == 0) {
+    RCLCPP_INFO(rclcpp::get_logger("optimal_planner"), "Optimization failed.");
     return false;
   }
 
   if (clear_after)
-    clearGraph();	
-    
+    clearGraph();
+
   return true;
 }
 
-void DiscreteTEBPlanner::clearGraph()
-{
+void DiscreteTEBPlanner::clearGraph() {
   // clear optimizer states
-  if (optimizer_)
-  {
+  if (optimizer_) {
     // we will delete all edges but keep the vertices.
     // before doing so, we will delete the link from the vertices to the edges.
-    auto& vertices = optimizer_->vertices();
-    for(auto& v : vertices)
+    auto &vertices = optimizer_->vertices();
+    for (auto &v : vertices)
       v.second->edges().clear();
 
-    // necessary, because optimizer->clear deletes pointer-targets 
+    // necessary, because optimizer->clear deletes pointer-targets
     // (therefore it deletes TEB states!)
     optimizer_->vertices().clear();
     optimizer_->clear();
   }
 }
 
-bool DiscreteTEBPlanner::hasDiverged()
-{
+bool DiscreteTEBPlanner::hasDiverged() {
   const bool enable = params_.FollowPath.optimizer.divergence_detection_enable;
   const double max_chi2 = params_.FollowPath.optimizer.divergence_detection_max_chi_squared;
-  const double max_violation_rate = params_.FollowPath.optimizer.divergence_detection_max_chi_violation_rate;
-  const double max_path_factor = params_.FollowPath.optimizer.divergence_detection_max_path_length_factor;
+  const double max_violation_rate =
+      params_.FollowPath.optimizer.divergence_detection_max_chi_violation_rate;
+  const double max_path_factor =
+      params_.FollowPath.optimizer.divergence_detection_max_path_length_factor;
   const double dt_ref = params_.FollowPath.trajectory.dt_ref;
   const double max_samples = params_.FollowPath.trajectory.max_samples;
   const double v_max = params_.FollowPath.robot.v_max_x;
-  
+
   if (!enable)
     return false;
   auto stats_vector = optimizer_->batchStatistics();
-  if (stats_vector.empty()) // No statistics yet
+  if (stats_vector.empty())  // No statistics yet
     return false;
   const auto last_iter_stats = stats_vector.back();
 
-  if (last_iter_stats.chi2 > max_chi2)
-  {
-    RCLCPP_INFO(rclcpp::get_logger("optimal_planner"), 
-          "DiscreteTEBPlanner: Optimizer has diverged, max_chi_2.");
+  if (last_iter_stats.chi2 > max_chi2) {
+    RCLCPP_INFO(rclcpp::get_logger("optimal_planner"),
+                "DiscreteTEBPlanner: Optimizer has diverged, max_chi_2.");
     return true;
   }
 
   int violated_edges = 0;
-  for (const auto* edge : optimizer_->activeEdges())
-    if (edge->chi2() > 1.0) ++violated_edges;
-  const double violation_rate = static_cast<double>(violated_edges) / optimizer_->activeEdges().size();
+  for (const auto *edge : optimizer_->activeEdges())
+    if (edge->chi2() > 1.0)
+      ++violated_edges;
+  const double violation_rate =
+      static_cast<double>(violated_edges) / optimizer_->activeEdges().size();
 
-  if (violation_rate > max_violation_rate )
-  {
-    RCLCPP_INFO(rclcpp::get_logger("optimal_planner"), 
-          "DiscreteTEBPlanner: Optimizer has diverged, violation_rate.");
+  if (violation_rate > max_violation_rate) {
+    RCLCPP_INFO(rclcpp::get_logger("optimal_planner"),
+                "DiscreteTEBPlanner: Optimizer has diverged, violation_rate.");
     return true;
   }
 
   const double path_length = teb_.accumulatedDistance();
   const double max_path_length = dt_ref * max_samples * v_max * max_path_factor;
-  if (path_length > max_path_length)
-  {
-    RCLCPP_INFO(rclcpp::get_logger("optimal_planner"), 
-          "DiscreteTEBPlanner: Optimizer has diverged, violation_rate.");
+  if (path_length > max_path_length) {
+    RCLCPP_INFO(rclcpp::get_logger("optimal_planner"),
+                "DiscreteTEBPlanner: Optimizer has diverged, max_path_length.");
     return true;
   }
-  return false;                       
+  return false;
 }
 
-void DiscreteTEBPlanner::computeCurrentCost()
-{
+void DiscreteTEBPlanner::computeCurrentCost() {
+  if (!params_.FollowPath.optimizer.verbose) {
+    return;
+  }
 
+  double total_cost = 0.0;
+  std::map<std::string, double> edge_type_costs;
+
+  for (auto it = optimizer_->activeEdges().begin(); it != optimizer_->activeEdges().end(); ++it) {
+    g2o::OptimizableGraph::Edge *edge = *it;
+    edge->computeError();
+    double cur_cost = edge->chi2();
+    total_cost += cur_cost;
+
+    std::string edge_name = "Unknown";
+    if (dynamic_cast<EdgeVelocity *>(edge) != nullptr)
+      edge_name = "EdgeVelocity";
+    else if (dynamic_cast<EdgeVelocityHolonomic *>(edge) != nullptr)
+      edge_name = "EdgeVelocityHolonomic";
+    else if (dynamic_cast<EdgeTimeOptimal *>(edge) != nullptr)
+      edge_name = "EdgeTimeOptimal";
+    else if (dynamic_cast<EdgeShortestPath *>(edge) != nullptr)
+      edge_name = "EdgeShortestPath";
+    else if (dynamic_cast<EdgePathSmoothness *>(edge) != nullptr)
+      edge_name = "EdgePathSmoothness";
+    else if (dynamic_cast<EdgeSnap *>(edge) != nullptr)
+      edge_name = "EdgeSnap";
+    else if (dynamic_cast<EdgeG3Continuity *>(edge) != nullptr)
+      edge_name = "EdgeG3Continuity";
+    else if (dynamic_cast<EdgeSteeringAngleGoal *>(edge) != nullptr)
+      edge_name = "EdgeSteeringAngleGoal";
+    else if (dynamic_cast<EdgeGoalAngularVelocityZero *>(edge) != nullptr)
+      edge_name = "EdgeGoalAngularVelocityZero";
+    else if (dynamic_cast<EdgeKinematicsDiffDrive *>(edge) != nullptr)
+      edge_name = "EdgeKinematicsDiffDrive";
+    else if (dynamic_cast<EdgeKinematicsCarlike *>(edge) != nullptr)
+      edge_name = "EdgeKinematicsCarlike";
+    else if (dynamic_cast<EdgeAccelerationStart *>(edge) != nullptr)
+      edge_name = "EdgeAccelerationStart";
+    else if (dynamic_cast<EdgeAcceleration *>(edge) != nullptr)
+      edge_name = "EdgeAcceleration";
+    else if (dynamic_cast<EdgeAccelerationGoal *>(edge) != nullptr)
+      edge_name = "EdgeAccelerationGoal";
+    else if (dynamic_cast<EdgeSteeringRateStart *>(edge) != nullptr)
+      edge_name = "EdgeSteeringRateStart";
+    else if (dynamic_cast<EdgeSteeringRate *>(edge) != nullptr)
+      edge_name = "EdgeSteeringRate";
+    else if (dynamic_cast<EdgeSteeringRateGoal *>(edge) != nullptr)
+      edge_name = "EdgeSteeringRateGoal";
+    else if (dynamic_cast<EdgeStartSteeringAngle *>(edge) != nullptr)
+      edge_name = "EdgeStartSteeringAngle";
+    else if (dynamic_cast<EdgeJerkStart *>(edge) != nullptr)
+      edge_name = "EdgeJerkStart";
+    else if (dynamic_cast<EdgeJerk *>(edge) != nullptr)
+      edge_name = "EdgeJerk";
+    else if (dynamic_cast<EdgeJerkGoal *>(edge) != nullptr)
+      edge_name = "EdgeJerkGoal";
+    // else if (dynamic_cast<EdgeViaPoints*>(edge) != nullptr) edge_name = "EdgeViaPoints";
+    // else if (dynamic_cast<EdgeCostmapObstacle*>(edge) != nullptr) edge_name =
+    // "EdgeCostmapObstacle";
+    else if (dynamic_cast<EdgeESDFObstacle *>(edge) != nullptr)
+      edge_name = "EdgeESDFObstacle";
+    // else if (dynamic_cast<EdgePreferRotDir*>(edge) != nullptr) edge_name = "EdgePreferRotDir";
+
+    edge_type_costs[edge_name] += cur_cost;
+  }
+
+  RCLCPP_INFO(rclcpp::get_logger("optimal_planner"), "=== Edge Cost Breakdown ===");
+  RCLCPP_INFO(rclcpp::get_logger("optimal_planner"), "Total chi2: %.3f", total_cost);
+
+  for (const auto &[name, cost] : edge_type_costs) {
+    RCLCPP_INFO(rclcpp::get_logger("optimal_planner"), "  %s: %.3f (%.1f%%)", name.c_str(), cost,
+                100.0 * cost / total_cost);
+  }
 }
 
-void DiscreteTEBPlanner::writeBackOptimizedValues()
-{
-  for (std::size_t i = 0; i < pose_vertices_.size(); ++i)
-  {
+void DiscreteTEBPlanner::writeBackOptimizedValues() {
+  for (std::size_t i = 0; i < pose_vertices_.size(); ++i) {
     teb_.pose(i) = pose_vertices_[i]->pose();
   }
-  for (std::size_t i = 0; i < timediff_vertices_.size(); ++i)
-  {
+  for (std::size_t i = 0; i < timediff_vertices_.size(); ++i) {
     teb_.timeDiff(i) = timediff_vertices_[i]->dt();
   }
 }
 
-void DiscreteTEBPlanner::updateObstacleContainer (costmap_converter_msgs::msg::ObstacleArrayMsg::ConstSharedPtr obstacle_array)
-{
-  if (obstacle_array)
-  {
+void DiscreteTEBPlanner::updateObstacleContainer(
+    costmap_converter_msgs::msg::ObstacleArrayMsg::ConstSharedPtr obstacle_array) {
+  if (obstacle_array) {
     obstacles_.clear();
-    for (const auto& obs : obstacle_array->obstacles)
-    {
-      if (obs.polygon.points.empty()) continue;
+    for (const auto &obs : obstacle_array->obstacles) {
+      if (obs.polygon.points.empty())
+        continue;
       std::vector<Eigen::Vector2d> polygon;
       polygon.reserve(obs.polygon.points.size());
-      for (const auto& pt : obs.polygon.points)
+      for (const auto &pt : obs.polygon.points)
         polygon.emplace_back(pt.x, pt.y);
       obstacles_.push_back({polygon, obs.radius});
     }
-  }
-  else
+  } else
     extractObstacles();
 }
 
-void DiscreteTEBPlanner::AddTEBVertices()
-{
-  bool final_goal = params_.FollowPath.optimizer.fix_goal;
-
+void DiscreteTEBPlanner::AddTEBVertices() {
   pose_vertices_.clear();
   timediff_vertices_.clear();
 
@@ -568,21 +600,19 @@ void DiscreteTEBPlanner::AddTEBVertices()
 
   unsigned int id_counter = 0;
 
-  for (std::size_t i = 0; i < teb_.sizePoses(); ++i)
-  {
+  for (std::size_t i = 0; i < teb_.sizePoses(); ++i) {
     // Start (i==0) und Goal (i==last) fixieren
-    const bool fixed = (i == 0) || ((i == teb_.sizePoses() - 1) && final_goal);
+    const bool fixed = (i == 0) || ((i == teb_.sizePoses() - 1) && final_goal_);
 
     // Pose-Vertex aus PoseSE2 erstellen
-    auto* pose_vtx = new VertexPose(teb_.pose(i), fixed);
+    auto *pose_vtx = new VertexPose(teb_.pose(i), fixed);
     pose_vtx->setId(id_counter++);
     optimizer_->addVertex(pose_vtx);
     pose_vertices_.push_back(pose_vtx);
 
     // TimeDiff-Vertex erstellen (N-1 Stück)
-    if (i < teb_.sizeTimeDiffs())
-    {
-      auto* dt_vtx = new VertexTimeDiff(teb_.timeDiff(i), false);
+    if (i < teb_.sizeTimeDiffs()) {
+      auto *dt_vtx = new VertexTimeDiff(teb_.timeDiff(i), false);
       dt_vtx->setId(id_counter++);
       optimizer_->addVertex(dt_vtx);
       timediff_vertices_.push_back(dt_vtx);
@@ -599,28 +629,26 @@ void DiscreteTEBPlanner::AddTEBVertices()
 // holonomic -> Start: 3 Vertex (2 Pose + 1 Time), first 2 poses, 3 weights, 3D, setInitialVelocity
 // holonomic -> All:   5 Vertex (3 Pose + 2 Time), All poses -2, 3 weights, 3D
 // holonomic -> Goal:  3 Vertex (2 Pose + 1 Time), last 2 poses, 3 weights, 3D, setGoalVelocity
-void DiscreteTEBPlanner::AddEdgesAcceleration()
-{
+void DiscreteTEBPlanner::AddEdgesAcceleration() {
   const bool holonomic = params_.FollowPath.robot.v_max_y > 0;
   const double weight_x = params_.FollowPath.weights.weight_a_max_x;
   const double weight_y = params_.FollowPath.weights.weight_a_max_y;
   const double weight_theta = params_.FollowPath.weights.weight_a_max_theta;
-  
-  if (!holonomic) // non-holonomic robot
-  {
-    if (weight_x==0  && weight_theta==0) 
-      return; // if weight equals zero skip adding edges!
 
-    int n = teb_.sizePoses();  
-    Eigen::Matrix<double,2,2> information;
+  if (!holonomic)  // non-holonomic robot
+  {
+    if (weight_x == 0 && weight_theta == 0)
+      return;  // if weight equals zero skip adding edges!
+
+    int n = teb_.sizePoses();
+    Eigen::Matrix<double, 2, 2> information;
     information.fill(0);
-    information(0,0) = weight_x;
-    information(1,1) = weight_theta;
-    
+    information(0, 0) = weight_x;
+    information(1, 1) = weight_theta;
+
     // check if an initial velocity should be taken into accound
-    if (vel_start_.first)
-    {
-      EdgeAccelerationStart* acceleration_edge = new EdgeAccelerationStart;
+    if (vel_start_.first) {
+      EdgeAccelerationStart *acceleration_edge = new EdgeAccelerationStart;
       acceleration_edge->setVertex(0, pose_vertices_[0]);
       acceleration_edge->setVertex(1, pose_vertices_[1]);
       acceleration_edge->setVertex(2, timediff_vertices_[0]);
@@ -631,47 +659,43 @@ void DiscreteTEBPlanner::AddEdgesAcceleration()
     }
 
     // now add the usual acceleration edge for each tuple of three teb poses
-    for (int i=0; i < n - 2; ++i)
-    {
-      EdgeAcceleration* acceleration_edge = new EdgeAcceleration;
+    for (int i = 0; i < n - 2; ++i) {
+      EdgeAcceleration *acceleration_edge = new EdgeAcceleration;
       acceleration_edge->setVertex(0, pose_vertices_[i]);
-      acceleration_edge->setVertex(1, pose_vertices_[i+1]);
-      acceleration_edge->setVertex(2, pose_vertices_[i+2]);
+      acceleration_edge->setVertex(1, pose_vertices_[i + 1]);
+      acceleration_edge->setVertex(2, pose_vertices_[i + 2]);
       acceleration_edge->setVertex(3, timediff_vertices_[i]);
-      acceleration_edge->setVertex(4, timediff_vertices_[i+1]);
+      acceleration_edge->setVertex(4, timediff_vertices_[i + 1]);
       acceleration_edge->setInformation(information);
       acceleration_edge->setTebConfig(params_);
       optimizer_->addEdge(acceleration_edge);
     }
-    
+
     // check if a goal velocity should be taken into accound
-    if (vel_goal_.first)
-    {
-      EdgeAccelerationGoal* acceleration_edge = new EdgeAccelerationGoal;
-      acceleration_edge->setVertex(0, pose_vertices_[n-2]);
-      acceleration_edge->setVertex(1, pose_vertices_[n-1]);
-      acceleration_edge->setVertex(2, timediff_vertices_[teb_.sizeTimeDiffs()-1]);
+    if (vel_goal_.first) {
+      EdgeAccelerationGoal *acceleration_edge = new EdgeAccelerationGoal;
+      acceleration_edge->setVertex(0, pose_vertices_[n - 2]);
+      acceleration_edge->setVertex(1, pose_vertices_[n - 1]);
+      acceleration_edge->setVertex(2, timediff_vertices_[teb_.sizeTimeDiffs() - 1]);
       acceleration_edge->setGoalVelocity(vel_goal_.second);
       acceleration_edge->setInformation(information);
       acceleration_edge->setTebConfig(params_);
       optimizer_->addEdge(acceleration_edge);
-    }  
-  }
-  else // holonomic robot
+    }
+  } else  // holonomic robot
   {
-    if (weight_x==0  && weight_y==0 && weight_theta==0) 
-      return; // if weight equals zero skip adding edges!
+    if (weight_x == 0 && weight_y == 0 && weight_theta == 0)
+      return;  // if weight equals zero skip adding edges!
 
     int n = teb_.sizePoses();
-    Eigen::Matrix<double,3,3> information;
+    Eigen::Matrix<double, 3, 3> information;
     information.fill(0);
-    information(0,0) = weight_x;
-    information(1,1) = weight_y;
-    information(2,2) = weight_theta;
+    information(0, 0) = weight_x;
+    information(1, 1) = weight_y;
+    information(2, 2) = weight_theta;
     // check if an initial velocity should be taken into accound
-    if (vel_start_.first)
-    {
-      EdgeAccelerationHolonomicStart* acceleration_edge = new EdgeAccelerationHolonomicStart;
+    if (vel_start_.first) {
+      EdgeAccelerationHolonomicStart *acceleration_edge = new EdgeAccelerationHolonomicStart;
       acceleration_edge->setVertex(0, pose_vertices_[0]);
       acceleration_edge->setVertex(1, pose_vertices_[1]);
       acceleration_edge->setVertex(2, timediff_vertices_[0]);
@@ -681,25 +705,23 @@ void DiscreteTEBPlanner::AddEdgesAcceleration()
       optimizer_->addEdge(acceleration_edge);
     }
     // now add the usual acceleration edge for each tuple of three teb poses
-    for (int i=0; i < n - 2; ++i)
-    {
-      EdgeAccelerationHolonomic* acceleration_edge = new EdgeAccelerationHolonomic;
+    for (int i = 0; i < n - 2; ++i) {
+      EdgeAccelerationHolonomic *acceleration_edge = new EdgeAccelerationHolonomic;
       acceleration_edge->setVertex(0, pose_vertices_[i]);
-      acceleration_edge->setVertex(1, pose_vertices_[i+1]);
-      acceleration_edge->setVertex(2, pose_vertices_[i+2]);
+      acceleration_edge->setVertex(1, pose_vertices_[i + 1]);
+      acceleration_edge->setVertex(2, pose_vertices_[i + 2]);
       acceleration_edge->setVertex(3, timediff_vertices_[i]);
-      acceleration_edge->setVertex(4, timediff_vertices_[i+1]);
+      acceleration_edge->setVertex(4, timediff_vertices_[i + 1]);
       acceleration_edge->setInformation(information);
       acceleration_edge->setTebConfig(params_);
       optimizer_->addEdge(acceleration_edge);
     }
     // check if a goal velocity should be taken into accound
-    if (vel_goal_.first)
-    {
-      EdgeAccelerationHolonomicGoal* acceleration_edge = new EdgeAccelerationHolonomicGoal;
-      acceleration_edge->setVertex(0, pose_vertices_[n-2]);
-      acceleration_edge->setVertex(1, pose_vertices_[n-1]);
-      acceleration_edge->setVertex(2, timediff_vertices_[teb_.sizeTimeDiffs()-1]);
+    if (vel_goal_.first) {
+      EdgeAccelerationHolonomicGoal *acceleration_edge = new EdgeAccelerationHolonomicGoal;
+      acceleration_edge->setVertex(0, pose_vertices_[n - 2]);
+      acceleration_edge->setVertex(1, pose_vertices_[n - 1]);
+      acceleration_edge->setVertex(2, timediff_vertices_[teb_.sizeTimeDiffs() - 1]);
       acceleration_edge->setGoalVelocity(vel_goal_.second);
       acceleration_edge->setInformation(information);
       acceleration_edge->setTebConfig(params_);
@@ -708,29 +730,27 @@ void DiscreteTEBPlanner::AddEdgesAcceleration()
   }
 }
 
-void DiscreteTEBPlanner::AddEdgesJerk()
-{
+void DiscreteTEBPlanner::AddEdgesJerk() {
   const double weight_x = params_.FollowPath.weights.weight_jerk_max_x;
   const double weight_theta = params_.FollowPath.weights.weight_jerk_max_theta;
-  
-  if (weight_x==0  && weight_theta==0) 
-    return; // if weight equals zero skip adding edges!
+
+  if (weight_x == 0 && weight_theta == 0)
+    return;  // if weight equals zero skip adding edges!
 
   int n = teb_.sizePoses();
 
   // We need at least 4 poses
   if (n < 4)
-      return;
+    return;
 
-  Eigen::Matrix<double,2,2> information;
+  Eigen::Matrix<double, 2, 2> information;
   information.fill(0);
-  information(0,0) = weight_x;
-  information(1,1) = weight_theta;
-    
+  information(0, 0) = weight_x;
+  information(1, 1) = weight_theta;
+
   // check if an initial velocity should be taken into accound
-  if (vel_start_.first)
-  {
-    EdgeJerkStart* jerk_edge = new EdgeJerkStart;
+  if (vel_start_.first) {
+    EdgeJerkStart *jerk_edge = new EdgeJerkStart;
     jerk_edge->setVertex(0, pose_vertices_[0]);
     jerk_edge->setVertex(1, pose_vertices_[1]);
     jerk_edge->setVertex(2, pose_vertices_[2]);
@@ -742,52 +762,49 @@ void DiscreteTEBPlanner::AddEdgesJerk()
     optimizer_->addEdge(jerk_edge);
   }
   // now add the usual jerk edge for each tuple of three teb poses
-  for (int i=0; i < n - 3; ++i)
-  {
-    EdgeJerk* jerk_edge = new EdgeJerk;
+  for (int i = 0; i < n - 3; ++i) {
+    EdgeJerk *jerk_edge = new EdgeJerk;
     jerk_edge->setVertex(0, pose_vertices_[i]);
-    jerk_edge->setVertex(1, pose_vertices_[i+1]);
-    jerk_edge->setVertex(2, pose_vertices_[i+2]);
-    jerk_edge->setVertex(3, pose_vertices_[i+3]);
+    jerk_edge->setVertex(1, pose_vertices_[i + 1]);
+    jerk_edge->setVertex(2, pose_vertices_[i + 2]);
+    jerk_edge->setVertex(3, pose_vertices_[i + 3]);
     jerk_edge->setVertex(4, timediff_vertices_[i]);
-    jerk_edge->setVertex(5, timediff_vertices_[i+1]);
-    jerk_edge->setVertex(6, timediff_vertices_[i+2]);
+    jerk_edge->setVertex(5, timediff_vertices_[i + 1]);
+    jerk_edge->setVertex(6, timediff_vertices_[i + 2]);
     jerk_edge->setInformation(information);
     jerk_edge->setTebConfig(params_);
     optimizer_->addEdge(jerk_edge);
   }
   // check if a goal velocity should be taken into accound
-  if (vel_goal_.first)
-  {
-    EdgeJerkGoal* jerk_edge = new EdgeJerkGoal;
-    jerk_edge->setVertex(0, pose_vertices_[n-3]);
-    jerk_edge->setVertex(1, pose_vertices_[n-2]);
-    jerk_edge->setVertex(2, pose_vertices_[n-1]);
-    jerk_edge->setVertex(3, timediff_vertices_[teb_.sizeTimeDiffs()-2]);
-    jerk_edge->setVertex(4, timediff_vertices_[teb_.sizeTimeDiffs()-1]);
+  if (vel_goal_.first) {
+    EdgeJerkGoal *jerk_edge = new EdgeJerkGoal;
+    jerk_edge->setVertex(0, pose_vertices_[n - 3]);
+    jerk_edge->setVertex(1, pose_vertices_[n - 2]);
+    jerk_edge->setVertex(2, pose_vertices_[n - 1]);
+    jerk_edge->setVertex(3, timediff_vertices_[teb_.sizeTimeDiffs() - 2]);
+    jerk_edge->setVertex(4, timediff_vertices_[teb_.sizeTimeDiffs() - 1]);
     jerk_edge->setGoalVelocity(vel_goal_.second);
     jerk_edge->setInformation(information);
     jerk_edge->setTebConfig(params_);
     optimizer_->addEdge(jerk_edge);
-  }  
+  }
 }
 
 // Start: 3 Vertex (2 Pose + 1 Time), first 2 poses, 1 weights, 1D, setInitialSteeringAngle
 // All:   5 Vertex (3 Pose + 2 Time), All poses -2, 1 weights, 1D
 // Goal:  3 Vertex (2 Pose + 1 Time), last 2 poses, 1 weights, 1D, setGoalSteeringAngle
-void DiscreteTEBPlanner::AddEdgesSteeringRate()
-{
+void DiscreteTEBPlanner::AddEdgesSteeringRate() {
   const double weight = params_.FollowPath.weights.weight_max_steering_rate;
-  if (weight==0)
-      return; // if weight equals zero skip adding edges!
+  if (weight == 0)
+    return;  // if weight equals zero skip adding edges!
   // create edge for satisfiying kinematic constraints
-  Eigen::Matrix<double,1,1> information_steering_rate;
-  information_steering_rate(0, 0) = weight;  
+  Eigen::Matrix<double, 1, 1> information_steering_rate;
+  information_steering_rate(0, 0) = weight;
   int n = teb_.sizePoses();
-  // check if an initial velocity should be taken into accound (we apply the same for the steering rate)
-  if (vel_start_.first)
-  {
-    EdgeSteeringRateStart* steering_rate_edge = new EdgeSteeringRateStart;
+  // check if an initial velocity should be taken into accound (we apply the same for the steering
+  // rate)
+  if (vel_start_.first) {
+    EdgeSteeringRateStart *steering_rate_edge = new EdgeSteeringRateStart;
     steering_rate_edge->setVertex(0, pose_vertices_[0]);
     steering_rate_edge->setVertex(1, pose_vertices_[1]);
     steering_rate_edge->setVertex(2, timediff_vertices_[0]);
@@ -796,47 +813,46 @@ void DiscreteTEBPlanner::AddEdgesSteeringRate()
     steering_rate_edge->setTebConfig(params_);
     optimizer_->addEdge(steering_rate_edge);
   }
-  for (int i=0; i < n-2; i++) // ignore twiced start only
+  for (int i = 0; i < n - 2; i++)  // ignore twiced start only
   {
-      EdgeSteeringRate* steering_rate_edge = new EdgeSteeringRate;
-      steering_rate_edge->setVertex(0, pose_vertices_[i]);
-      steering_rate_edge->setVertex(1, pose_vertices_[i+1]);      
-      steering_rate_edge->setVertex(2, pose_vertices_[i+2]);   
-      steering_rate_edge->setVertex(3, timediff_vertices_[i]); 
-      steering_rate_edge->setVertex(4, timediff_vertices_[i+1]); 
-      steering_rate_edge->setInformation(information_steering_rate);
-      steering_rate_edge->setTebConfig(params_);
-      // optimizer_->addEdge(steering_rate_edge);
+    EdgeSteeringRate *steering_rate_edge = new EdgeSteeringRate;
+    steering_rate_edge->setVertex(0, pose_vertices_[i]);
+    steering_rate_edge->setVertex(1, pose_vertices_[i + 1]);
+    steering_rate_edge->setVertex(2, pose_vertices_[i + 2]);
+    steering_rate_edge->setVertex(3, timediff_vertices_[i]);
+    steering_rate_edge->setVertex(4, timediff_vertices_[i + 1]);
+    steering_rate_edge->setInformation(information_steering_rate);
+    steering_rate_edge->setTebConfig(params_);
+    // optimizer_->addEdge(steering_rate_edge);
   }
-  // check if a goal velocity should be taken into accound (we apply the same for the steering rate)
-  if (vel_goal_.first)
-  {
-    EdgeSteeringRateGoal* steering_rate_edge = new EdgeSteeringRateGoal;
-    steering_rate_edge->setVertex(0, pose_vertices_[n-2]);
-    steering_rate_edge->setVertex(1, pose_vertices_[n-1]);
-    steering_rate_edge->setVertex(2, timediff_vertices_[teb_.sizeTimeDiffs()-1]);
+  // check if a goal velocity should be taken into accound (we apply the same for the steering
+  // rate)
+  if (vel_goal_.first) {
+    EdgeSteeringRateGoal *steering_rate_edge = new EdgeSteeringRateGoal;
+    steering_rate_edge->setVertex(0, pose_vertices_[n - 2]);
+    steering_rate_edge->setVertex(1, pose_vertices_[n - 1]);
+    steering_rate_edge->setVertex(2, timediff_vertices_[teb_.sizeTimeDiffs() - 1]);
     steering_rate_edge->setGoalSteeringAngle(0.0);
     steering_rate_edge->setInformation(information_steering_rate);
     steering_rate_edge->setTebConfig(params_);
     optimizer_->addEdge(steering_rate_edge);
-  }  
+  }
 }
 
 // 5 Vertex (3 Pose + 2 Time), first 3 poses, 1 weights, 2D, setInitialSteeringAngle
-void DiscreteTEBPlanner::AddEdgesStartSteeringAngle()
-{
+void DiscreteTEBPlanner::AddEdgesStartSteeringAngle() {
   const double weight = params_.FollowPath.weights.weight_start_steering_angle;
-  if (weight==0)
-      return; // if weight equals zero skip adding edges!
+  if (weight == 0)
+    return;  // if weight equals zero skip adding edges!
 
   // We need at least 3 poses
   if (teb_.sizePoses() < 3)
-      return;
+    return;
 
   // Create the information matrix (weight).
   // Since our error is 2D, the information matrix is 2x2.
   Eigen::Matrix<double, 2, 2> information = Eigen::Matrix<double, 2, 2>::Identity() * weight;
-  EdgeStartSteeringAngle* start_edge = new EdgeStartSteeringAngle();
+  EdgeStartSteeringAngle *start_edge = new EdgeStartSteeringAngle();
   start_edge->setVertex(0, pose_vertices_[0]);
   start_edge->setVertex(1, pose_vertices_[1]);
   start_edge->setVertex(2, pose_vertices_[2]);
@@ -848,11 +864,10 @@ void DiscreteTEBPlanner::AddEdgesStartSteeringAngle()
   optimizer_->addEdge(start_edge);
 }
 
-void DiscreteTEBPlanner::extractObstacles()
-{
+void DiscreteTEBPlanner::extractObstacles() {
   obstacles_.clear();
-  auto* costmap = costmap_ros_->getCostmap();
-  
+  auto *costmap = costmap_ros_->getCostmap();
+
   // Nur LETHAL-Zellen → Punkt-Obstacles
   for (unsigned int mx = 0; mx < costmap->getSizeInCellsX(); ++mx) {
     for (unsigned int my = 0; my < costmap->getSizeInCellsY(); ++my) {
@@ -865,39 +880,37 @@ void DiscreteTEBPlanner::extractObstacles()
   }
 }
 
-void DiscreteTEBPlanner::AddEdgesObstacles()
-{
+void DiscreteTEBPlanner::AddEdgesObstacles() {
   const double weight_obstacle = params_.FollowPath.weights.weight_obstacle;
   const double weight_inflation = params_.FollowPath.weights.weight_inflation;
   const double min_dist = params_.FollowPath.obstacles.min_obstacle_dist;
   const double cutoff_buffer = params_.FollowPath.obstacles.cutoff_dist;
-  const auto& raw_fp = costmap_ros_->getRobotFootprint();
+  const auto &raw_fp = costmap_ros_->getRobotFootprint();
   const double circum_radius = costmap_ros_->getLayeredCostmap()->getCircumscribedRadius();
   double cutoff = circum_radius + min_dist + cutoff_buffer;
 
-  if (weight_obstacle == 0.0 && weight_inflation == 0.0) return;
+  if (weight_obstacle == 0.0 && weight_inflation == 0.0)
+    return;
 
-  Eigen::Matrix<double,2,2> information;
+  Eigen::Matrix<double, 2, 2> information;
   information.fill(0);
-  information(0,0) = weight_obstacle * weight_multiplier_;
-  information(1,1) = weight_inflation;
+  information(0, 0) = weight_obstacle * weight_multiplier_;
+  information(1, 1) = weight_inflation;
 
-  for (std::size_t i = 0; i < teb_.sizePoses(); ++i)
-  {
+  for (std::size_t i = 0; i < teb_.sizePoses(); ++i) {
     const Eigen::Vector2d pose_pos = teb_.pose(i).position();
 
-    for (const auto& obs : obstacles_)
-    {
+    for (const auto &obs : obstacles_) {
       // Obstacle (grober Vorfilter), check closest polygon point
       double rough_dist = std::numeric_limits<double>::max();
-      for (const auto& pt : obs.polygon)
-      {
+      for (const auto &pt : obs.polygon) {
         if (rough_dist > (pose_pos - pt).norm())
           rough_dist = (pose_pos - pt).norm();
       }
-      if (rough_dist > cutoff) continue;  // zu weit weg → skip
+      if (rough_dist > cutoff)
+        continue;  // zu weit weg → skip
 
-      EdgeCostmapObstacle* e = new EdgeCostmapObstacle();
+      EdgeCostmapObstacle *e = new EdgeCostmapObstacle();
       e->setVertex(0, pose_vertices_[i]);
       e->setObstacle(obs);
       e->setFootprint(raw_fp);
@@ -908,15 +921,15 @@ void DiscreteTEBPlanner::AddEdgesObstacles()
   }
 }
 
-void DiscreteTEBPlanner::addEdgesESDFObstacles()
-{
-  const double weight_obstacle  = params_.FollowPath.weights.weight_obstacle;
+void DiscreteTEBPlanner::addEdgesESDFObstacles() {
+  const double weight_obstacle = params_.FollowPath.weights.weight_obstacle;
   const double weight_inflation = params_.FollowPath.weights.weight_inflation;
 
-  if (weight_obstacle == 0.0 && weight_inflation == 0.0) return;
+  if (weight_obstacle == 0.0 && weight_inflation == 0.0)
+    return;
 
   const int n_circles = static_cast<int>(footprint_.circles().size());
-  const int dim       = n_circles + 1;
+  const int dim = n_circles + 1;
 
   // Information matrix — dynamisch, zur Laufzeit aufgebaut
   Eigen::MatrixXd information = Eigen::MatrixXd::Zero(dim, dim);
@@ -925,8 +938,8 @@ void DiscreteTEBPlanner::addEdgesESDFObstacles()
   information(dim - 1, dim - 1) = weight_inflation;
 
   for (std::size_t i = 0; i < teb_.sizePoses(); ++i) {
-    auto* e = new EdgeESDFObstacle();
-    e->resize(n_circles);          // ← setzt _dimension vor addEdge
+    auto *e = new EdgeESDFObstacle();
+    e->resize(n_circles);  // ← setzt _dimension vor addEdge
     e->setVertex(0, pose_vertices_[i]);
     e->setObstacle(*esdf_);
     e->setFootprint(footprint_);
@@ -936,22 +949,22 @@ void DiscreteTEBPlanner::addEdgesESDFObstacles()
   }
 }
 
-void DiscreteTEBPlanner::AddEdgesViaPoints(){}
-void DiscreteTEBPlanner::AddEdgesPreferRotDir(){}
+void DiscreteTEBPlanner::AddEdgesViaPoints() {}
+void DiscreteTEBPlanner::AddEdgesPreferRotDir() {}
 
-template<typename EdgeType, int InfoDim, typename... Args>
-void DiscreteTEBPlanner::addEdgesGeneric(const EdgeDescriptor& desc, 
-                     const std::array<double, InfoDim>& weights,
-                     Args&&... args)
-{
+template <typename EdgeType, int InfoDim, typename... Args>
+void DiscreteTEBPlanner::addEdgesGeneric(const EdgeDescriptor &desc,
+                                         const std::array<double, InfoDim> &weights,
+                                         Args &&...args) {
   // Prüfe ob alle weights > 0
   for (double w : weights)
-    if (w == 0.0) return;
+    if (w == 0.0)
+      return;
 
   const int n = static_cast<int>(teb_.sizePoses());
 
-  if ((desc.num_poses && (n < desc.num_poses))
-    || (desc.num_timediffs && (n-1 < desc.num_timediffs)))
+  if ((desc.num_poses && (n < desc.num_poses)) ||
+      (desc.num_timediffs && (n - 1 < desc.num_timediffs)))
     return;
 
   // Iterationsbereich bestimmen
@@ -959,30 +972,27 @@ void DiscreteTEBPlanner::addEdgesGeneric(const EdgeDescriptor& desc,
   if (desc.offset >= 0) {
     // Von vorne: z.B. TimeOptimal, Jerk, StartSteering
     start_i = desc.offset;
-    end_i   = (desc.stride == 0)
-              ? start_i + 1                          // einmalig (Start/Goal-Edges)
-              : n - desc.stride;                     // alle - stride
+    end_i = (desc.stride == 0) ? start_i + 1       // einmalig (Start/Goal-Edges)
+                               : n - desc.stride;  // alle - stride
   } else {
     // Von hinten
     if (desc.stride == 0) {
       // Einmalig: genau die letzten num_poses Posen
-      start_i = n - desc.num_poses;   // 5-5=0 ✓
-      end_i   = start_i + 1;          // 1 ✓
+      start_i = n - desc.num_poses;  // 5-5=0 ✓
+      end_i = start_i + 1;           // 1 ✓
     } else {
       // Sliding bis vor das Ende
       start_i = 0;
-      end_i   = n - desc.num_poses - std::abs(desc.offset) + 1;
+      end_i = n - desc.num_poses - std::abs(desc.offset) + 1;
     }
   }
   // Information-Matrix aufbauen
-  Eigen::Matrix<double, InfoDim, InfoDim> info =
-    Eigen::Matrix<double, InfoDim, InfoDim>::Zero();
+  Eigen::Matrix<double, InfoDim, InfoDim> info = Eigen::Matrix<double, InfoDim, InfoDim>::Zero();
   for (int d = 0; d < InfoDim; ++d)
     info(d, d) = weights[d];
 
-  for (int i = start_i; i < end_i; ++i)
-  {
-    auto* e = new EdgeType();
+  for (int i = start_i; i < end_i; ++i) {
+    auto *e = new EdgeType();
     // Pose-Vertices setzen
     for (int p = 0; p < desc.num_poses; ++p)
       e->setVertex(p, pose_vertices_[i + p]);
@@ -997,13 +1007,12 @@ void DiscreteTEBPlanner::addEdgesGeneric(const EdgeDescriptor& desc,
   }
 }
 
-} // namespace nav2_teb_controller
-
+}  // namespace nav2_teb_controller
 
 // replaced with addEdgesGeneric
 /*
 // 1 Vertex Time, All timediff, 1 weight, 1D
-void DiscreteTEBPlanner::AddEdgesTimeOptimal() 
+void DiscreteTEBPlanner::AddEdgesTimeOptimal()
 {
   const double weight = params_.FollowPath.weights.weight_time_optimal;
   if (weight==0) return; // if weight equals zero skip adding edges!
@@ -1105,7 +1114,7 @@ void DiscreteTEBPlanner::AddEdgesVelocity()
   {
     if (weight_x==0 && weight_y==0 && weight_theta==0)
       return; // if weight equals zero skip adding edges!
-      
+
     int n = teb_.sizePoses();
     Eigen::Matrix<double,3,3> information;
     information.fill(0);
@@ -1122,7 +1131,7 @@ void DiscreteTEBPlanner::AddEdgesVelocity()
       velocity_edge->setInformation(information);
       velocity_edge->setTebConfig(params_);
       optimizer_->addEdge(velocity_edge);
-    } 
+    }
   }
 }
 */
@@ -1200,22 +1209,22 @@ void DiscreteTEBPlanner::AddEdgesKinematicsDiffDrive()
   const double weight_forward = params_.FollowPath.weights.weight_kinematics_forward_drive;
   if (weight_nh==0 && weight_forward==0)
     return; // if weight equals zero skip adding edges!
-  
+
   // create edge for satisfiying kinematic constraints
   Eigen::Matrix<double,2,2> information_kinematics;
   information_kinematics.fill(0.0);
   information_kinematics(0, 0) = weight_nh;
   information_kinematics(1, 1) = weight_forward;
-  
+
   for (std::size_t i=0; i < teb_.sizePoses()-1; i++) // ignore twiced start only
   {
     EdgeKinematicsDiffDrive* kinematics_edge = new EdgeKinematicsDiffDrive;
     kinematics_edge->setVertex(0, pose_vertices_[i]);
-    kinematics_edge->setVertex(1, pose_vertices_[i+1]);      
+    kinematics_edge->setVertex(1, pose_vertices_[i+1]);
     kinematics_edge->setInformation(information_kinematics);
     kinematics_edge->setTebConfig(params_);
     optimizer_->addEdge(kinematics_edge);
-  }	 
+  }
 }
 */
 /*
@@ -1232,16 +1241,16 @@ void DiscreteTEBPlanner::AddEdgesKinematicsCarlike()
   information_kinematics.fill(0.0);
   information_kinematics(0, 0) = weight_nh;
   information_kinematics(1, 1) = weight_turning_radius;
-  
+
   for (std::size_t i=0; i < teb_.sizePoses()-1; i++) // ignore twiced start only
   {
     EdgeKinematicsCarlike* kinematics_edge = new EdgeKinematicsCarlike;
     kinematics_edge->setVertex(0,pose_vertices_[i]);
-    kinematics_edge->setVertex(1,pose_vertices_[i+1]);      
+    kinematics_edge->setVertex(1,pose_vertices_[i+1]);
     kinematics_edge->setInformation(information_kinematics);
     kinematics_edge->setTebConfig(params_);
     optimizer_->addEdge(kinematics_edge);
-  }  
+  }
 }
 */
 /*
@@ -1283,7 +1292,7 @@ void DiscreteTEBPlanner::AddEdgesSteeringAngleGoal()
   int n = teb_.sizePoses();
   if (n < 5)
     return;
-  // Only when path is near goal 
+  // Only when path is near goal
   if (teb_.backPose().toPoseMsg() != goal_)
     return;
 
@@ -1331,7 +1340,3 @@ void DiscreteTEBPlanner::AddEdgesGoalAngularVelocityZero()
   optimizer_->addEdge(edge);
 }
 */
-
-
-
-

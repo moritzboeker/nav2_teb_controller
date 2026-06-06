@@ -68,7 +68,7 @@ public:
     const double dist2 = diff2.norm();
 
     // Check for small distances to avoid division by zero
-    if (dist1 < 1e-6 || dist2 < 1e-6)
+    if (dist1 < 1e-4 || dist2 < 1e-4)
     {
       _error[0] = 0.0;
       return;

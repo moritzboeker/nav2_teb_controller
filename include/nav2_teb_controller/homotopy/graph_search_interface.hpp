@@ -1,18 +1,18 @@
 #pragma once
-#include <vector>
-#include <memory>
 #include <costmap_converter_msgs/msg/obstacle_array_msg.hpp>
+#include <memory>
+#include <vector>
+
 #include "nav2_teb_controller/core/pose_se2.hpp"
 #include "nav2_teb_controller/homotopy/h_signature.hpp"
 
 namespace nav2_teb_controller {
 
 /** @brief One HCP candidate path from graph search */
-struct GraphSearchResult
-{
-  std::vector<PoseSE2> path;     // Initial path for TEB warm-start
-  HSignature h_signature;        // Homotopy class identifier
-  double cost = 0.0;             // Estimated path cost
+struct GraphSearchResult {
+  std::vector<PoseSE2> path;  // Initial path for TEB warm-start
+  HSignature h_signature;     // Homotopy class identifier
+  double cost = 0.0;          // Estimated path cost
 };
 
 /**
@@ -20,8 +20,7 @@ struct GraphSearchResult
  *
  * Implementations: VisibilityGraphSearch, ProAStarSearch (future)
  */
-class GraphSearchInterface
-{
+class GraphSearchInterface {
 public:
   using ObstacleArray = costmap_converter_msgs::msg::ObstacleArrayMsg;
 
@@ -36,16 +35,13 @@ public:
    * @param results Output: homotopy-distinct paths
    * @return true if at least one path found
    */
-  virtual bool search(const PoseSE2& start,
-                      const PoseSE2& goal,
-                      const ObstacleArray& obstacles,
-                      int max_classes,
-                      std::vector<GraphSearchResult>& results) = 0;
+  virtual bool search(const PoseSE2 &start, const PoseSE2 &goal, const ObstacleArray &obstacles,
+                      int max_classes, std::vector<GraphSearchResult> &results) = 0;
 
   /**
    * @brief Update obstacle data (e.g. dynamic obstacles)
    */
-  virtual void updateObstacles(const ObstacleArray& obstacles) = 0;
+  virtual void updateObstacles(const ObstacleArray &obstacles) = 0;
 };
 
-} // namespace nav2_teb_controller
+}  // namespace nav2_teb_controller
