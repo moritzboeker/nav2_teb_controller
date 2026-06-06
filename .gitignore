@@ -1,0 +1,85 @@
+# ROS2 build artifacts
+build/
+install/
+log/
+*.devel/
+
+# Compiled binaries and object files
+*.o
+*.a
+*.so
+*.so.*
+*.dylib
+*.out
+*.exe
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+*.egg
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.clangd/
+.cache/
+compile_commands.json
+
+# CLion / JetBrains
+cmake-build-*/
+.idea/
+
+# VSCode (keep workspace settings optional)
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# Clangd / LSP cache
+.cache/
+.clangd/
+
+# Rosdep / colcon logs
+.colcon_install_layout
+colcon.meta
+
+# Environment / secrets
+.env
+*.env
+*.pem
+*.key
+
+# Test results / coverage
+Testing/
+coverage/
+*.lcov
+*.gcov
+*.gcda
+*.gcno
+
+# Doxygen output
+docs/html/
+docs/latex/
+docs/xml/
+
+# Bag files (ROS2 recordings)
+*.db3
+*.mcap
+*.bag
+
+# Misc
+*.log
+*.tmp
+*.bak
+*.orig
+
+# AI
+.aider*
