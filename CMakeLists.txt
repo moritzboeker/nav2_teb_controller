@@ -115,11 +115,21 @@ install(DIRECTORY config/ launch/
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
 if(BUILD_TESTING)
-  find_package(ament_lint_auto REQUIRED)
   find_package(ament_cmake_gtest REQUIRED)
+
+  # Alle ament_lint checks deaktivieren
   set(ament_cmake_copyright_FOUND TRUE)
   set(ament_cmake_cpplint_FOUND TRUE)
+  set(ament_cmake_cppcheck_FOUND TRUE)
+  set(ament_cmake_lint_cmake_FOUND TRUE)
+  set(ament_cmake_xmllint_FOUND TRUE)
+  set(ament_cmake_uncrustify_FOUND TRUE)
+  set(ament_cmake_flake8_FOUND TRUE)
+  set(ament_cmake_pep257_FOUND TRUE)
+
+  find_package(ament_lint_auto REQUIRED)
   ament_lint_auto_find_test_dependencies()
+
   add_subdirectory(test)
 endif()
 

@@ -7,13 +7,14 @@ SRC    := src
 
 help:
 	@echo "Available commands:"
-	@echo "  make build       - colcon build"
-	@echo "  make test        - colcon test"
-	@echo "  make format      - clang-format check (kein Fix)"
-	@echo "  make format-fix  - clang-format mit Fix"
-	@echo "  make lint        - clang-tidy check (kein Fix)"
-	@echo "  make lint-fix    - clang-tidy mit Fix"
-	@echo "  make all         - format + lint + build + test"
+	@echo "  make build       		- colcon build"
+	@echo "  make test        		- colcon test"
+	@echo "  make test-with-log		- colcon test"
+	@echo "  make format      		- clang-format check (kein Fix)"
+	@echo "  make format-fix  		- clang-format mit Fix"
+	@echo "  make lint        		- clang-tidy check (kein Fix)"
+	@echo "  make lint-fix    		- clang-tidy mit Fix"
+	@echo "  make all         		- format + lint + build + test"
 
 build:
 	source /opt/ros/jazzy/setup.bash && \
@@ -21,10 +22,15 @@ build:
 		--packages-select $(PKG) \
 		--cmake-args -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
+test-with-log:
+	source /opt/ros/jazzy/setup.bash && \
+	cd $(WS) && colcon test --packages-select $(PKG) --event-handlers console_direct+ && \
+	colcon test-result
+
 test:
 	source /opt/ros/jazzy/setup.bash && \
 	cd $(WS) && colcon test --packages-select $(PKG) && \
-	colcon test-result --verbose
+	colcon test-result
 
 format:
 	find $(SRC) -name "*.cpp" -o -name "*.hpp" | \
