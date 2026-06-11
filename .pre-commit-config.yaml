@@ -1,0 +1,17 @@
+repos:
+  # Standard hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+  # clang-format
+  - repo: https://github.com/cpp-linter/cpp-linter-hooks
+    rev: v0.6.1
+    hooks:
+      - id: clang-format
+        args: [--style=file]  # nutzt deine .clang-format
+        files: ^(src|include)/.*\.(cpp|cc|h|hpp)$

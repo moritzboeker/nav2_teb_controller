@@ -27,8 +27,9 @@ double estimateDeltaT(const PoseSE2 &start, const PoseSE2 &end, double max_vel_x
 bool initFromPath(TimedElasticBand &teb, const nav_msgs::msg::Path &path, double max_vel_x,
                   double max_vel_theta, bool estimate_orient, int min_samples,
                   bool guess_backwards_motion, bool /*fixed_goal*/) {
-  if (teb.isInit())
+  if (teb.isInit()) {
     return false;
+  }
 
   PoseSE2 start(path.poses.front().pose);
   PoseSE2 goal(path.poses.back().pose);
@@ -43,8 +44,9 @@ bool initFromPath(TimedElasticBand &teb, const nav_msgs::msg::Path &path, double
       double dx = path.poses[i + 1].pose.position.x - path.poses[i].pose.position.x;
       double dy = path.poses[i + 1].pose.position.y - path.poses[i].pose.position.y;
       yaw = std::atan2(dy, dx);
-      if (backwards)
+      if (backwards) {
         yaw = angles::normalize_angle(yaw + M_PI);
+      }
     } else
       yaw = tf2::getYaw(path.poses[i].pose.orientation);
     PoseSE2 intermediate_pose(path.poses[i].pose.position.x, path.poses[i].pose.position.y, yaw);
@@ -123,15 +125,17 @@ void autoResize(TimedElasticBand &teb, double dt_ref, double dt_hysteresis, doub
         modified = true;
       }
     }
-    if (fast_mode)
+    if (fast_mode) {
       break;
+    }
   }
 }
 
 void updateAndPrune(TimedElasticBand &teb, const PoseSE2 &new_start, const PoseSE2 &new_goal,
                     int min_samples) {
-  if (teb.sizePoses() == 0)
+  if (teb.sizePoses() == 0) {
     return;
+  }
   // find nearest state (using l2-norm) in order to prune the trajectory
   const int max_lookahead = 15;
   const int last_idx = static_cast<int>(teb.sizePoses()) - 1;
@@ -143,8 +147,9 @@ void updateAndPrune(TimedElasticBand &teb, const PoseSE2 &new_start, const PoseS
     if (dist < dist_cache) {
       dist_cache = dist;
       nearest_idx = i;
-    } else
+    } else {
       break;
+    }
   }
   // prune trajectory at the beginning
   if (nearest_idx > 0) {
@@ -169,14 +174,15 @@ void updateAndPrune(TimedElasticBand &teb, const PoseSE2 &new_start, const PoseS
 geometry_msgs::msg::Twist extractVelocity(const PoseSE2 &pose1, const PoseSE2 &pose2, double dt,
                                           bool holonomic) {
   geometry_msgs::msg::Twist cmd_vel;
-  if (dt < 1e-9)
+  if (dt < 1e-9) {
     return cmd_vel;
+  }
 
   Eigen::Vector2d deltaS = pose2.position() - pose1.position();
   if (!holonomic) {
     Eigen::Vector2d conf1dir(std::cos(pose1.theta()), std::sin(pose1.theta()));
     double dir = deltaS.dot(conf1dir);
-    cmd_vel.linear.x = (double)std::copysign(1, dir) * deltaS.norm() / dt;
+    cmd_vel.linear.x = std::copysign(1, dir) * deltaS.norm() / dt;
     // cmd_vel.linear.x = deltaS.dot(conf1dir) / dt;
   } else {
     double cos_theta1 = std::cos(pose1.theta());
@@ -194,22 +200,23 @@ geometry_msgs::msg::Twist getVelocityCommand(const TimedElasticBand &teb, double
                                              int look_ahead_poses, double min_look_ahead_time,
                                              bool holonomic) {
   geometry_msgs::msg::Twist cmd_vel;
-  if (teb.sizePoses() < 2)
+  if (teb.sizePoses() < 2) {
     return cmd_vel;
+  }
   look_ahead_poses =
       std::max(1, std::min(look_ahead_poses, static_cast<int>(teb.sizePoses() - 1)));
   double dt = 0.0;
   for (int counter = 0; counter < look_ahead_poses; ++counter) {
     dt += teb.timeDiff(counter);
-    if (dt >= dt_ref * look_ahead_poses && dt >= min_look_ahead_time)
-    // if(min_look_ahead_time >= dt_ref * look_ahead_poses)
-    {
+    if (dt >= dt_ref * look_ahead_poses && dt >= min_look_ahead_time) {
+      // if(min_look_ahead_time >= dt_ref * look_ahead_poses) {
       look_ahead_poses = counter + 1;
       break;
     }
   }
-  if (dt <= 1e-9)
+  if (dt <= 1e-9) {
     return cmd_vel;
+  }
   // Get velocity from the first two configurations
   // if (teb.accumulatedDistance() < 0.01) // add param later
   //   cmd_vel = extractVelocity(teb.pose(0), teb.pose(teb.sizePoses()-1), dt, holonomic);
@@ -222,8 +229,9 @@ geometry_msgs::msg::Twist getVelocityCommand(const TimedElasticBand &teb, double
 bool pruneGlobalPlan(const tf2_ros::Buffer &tf_buffer,
                      const geometry_msgs::msg::PoseStamped &robot_pose,
                      nav_msgs::msg::Path &global_plan, double dist_behind_robot) {
-  if (global_plan.poses.empty())
+  if (global_plan.poses.empty()) {
     return true;
+  }
   try {
     geometry_msgs::msg::PoseStamped robot =
         tf_buffer.transform(robot_pose, global_plan.poses.front().header.frame_id);
@@ -239,11 +247,14 @@ bool pruneGlobalPlan(const tf2_ros::Buffer &tf_buffer,
       }
       ++it;
     }
-    if (erase_end == global_plan.poses.end())
+    if (erase_end == global_plan.poses.end()) {
       return false;
-    if (erase_end != global_plan.poses.begin())
+    }
+    if (erase_end != global_plan.poses.begin()) {
       global_plan.poses.erase(global_plan.poses.begin(), erase_end);
-  } catch (const tf2::TransformException &) {
+    }
+  } catch (const tf2::TransformException &ex) {
+    RCLCPP_DEBUG(rclcpp::get_logger("optimal_planner"), "TF transform failed: %s", ex.what());
     return false;
   }
   return true;
@@ -256,8 +267,9 @@ nav_msgs::msg::Path transformAndTrimPlan(const tf2_ros::Buffer &tf_buffer,
                                          const std::string &global_frame, const rclcpp::Time &now,
                                          double max_plan_length, int *current_goal_idx) {
   nav_msgs::msg::Path transformed_path;
-  if (global_plan.poses.empty())
+  if (global_plan.poses.empty()) {
     return transformed_path;
+  }
 
   const auto &plan_pose = global_plan.poses.front();
   try {
@@ -282,15 +294,18 @@ nav_msgs::msg::Path transformAndTrimPlan(const tf2_ros::Buffer &tf_buffer,
       double dx = robot_pose.pose.position.x - global_plan.poses[j].pose.position.x;
       double dy = robot_pose.pose.position.y - global_plan.poses[j].pose.position.y;
       double new_sq_dist = dx * dx + dy * dy;
-      if (new_sq_dist > sq_dist_threshold)
+      if (new_sq_dist > sq_dist_threshold) {
         break;
-      if (robot_reached && new_sq_dist > sq_dist)
+      }
+      if (robot_reached && new_sq_dist > sq_dist) {
         break;
+      }
       if (new_sq_dist < sq_dist) {
         sq_dist = new_sq_dist;
         i = j;
-        if (sq_dist < 0.05)
+        if (sq_dist < 0.05) {
           robot_reached = true;
+        }
       }
     }
 
@@ -312,11 +327,13 @@ nav_msgs::msg::Path transformAndTrimPlan(const tf2_ros::Buffer &tf_buffer,
     if (transformed_path.poses.empty()) {
       tf2::doTransform(global_plan.poses.back(), newer_pose, plan_to_global);
       transformed_path.poses.push_back(newer_pose);
-      if (current_goal_idx)
+      if (current_goal_idx) {
         *current_goal_idx = int(global_plan.poses.size()) - 1;
+      }
     } else {
-      if (current_goal_idx)
+      if (current_goal_idx) {
         *current_goal_idx = i - 1;
+      }
     }
   } catch (const tf2::TransformException &) {
     return nav_msgs::msg::Path();
@@ -329,17 +346,21 @@ void saturateVelocity(geometry_msgs::msg::Twist &cmd_vel, double v_max_x, double
                       bool use_proportional_saturation) {
   double ratio_x = 1.0, ratio_omega = 1.0, ratio_y = 1.0;
 
-  if (cmd_vel.linear.x > v_max_x)
+  if (cmd_vel.linear.x > v_max_x) {
     ratio_x = v_max_x / cmd_vel.linear.x;
+  }
 
-  if (cmd_vel.linear.y > v_max_y || cmd_vel.linear.y < -v_max_y)
+  if (cmd_vel.linear.y > v_max_y || cmd_vel.linear.y < -v_max_y) {
     ratio_y = std::abs(v_max_y / cmd_vel.linear.y);
+  }
 
-  if (cmd_vel.angular.z > v_max_theta || cmd_vel.angular.z < -v_max_theta)
+  if (cmd_vel.angular.z > v_max_theta || cmd_vel.angular.z < -v_max_theta) {
     ratio_omega = std::abs(v_max_theta / cmd_vel.angular.z);
+  }
 
-  if (cmd_vel.linear.x < -v_max_x_backwards)
+  if (cmd_vel.linear.x < -v_max_x_backwards) {
     ratio_x = -v_max_x_backwards / cmd_vel.linear.x;
+  }
 
   if (use_proportional_saturation) {
     double ratio = std::min({ratio_x, ratio_y, ratio_omega});
@@ -389,8 +410,9 @@ void saturateSteeringAngle(geometry_msgs::msg::Twist &cmd_vel, double current_an
   auto [cmd_speed, cmd_angle] = convertTwistToAckermann(cmd_vel, wheelbase);
   double angle_diff = std::abs(angles::normalize_angle(cmd_angle - current_angle));
   double angle_rate = std::abs(angle_diff) / dt;
-  if (angle_rate > steering_rate_max)
+  if (angle_rate > steering_rate_max) {
     cmd_angle += std::copysign(steering_rate_max, angle_diff) * dt;
+  }
   cmd_vel = convertAckermannToTwist(cmd_speed, cmd_angle, wheelbase);
 }
 
@@ -406,8 +428,9 @@ double computeCurvature(const PoseSE2 &p1, const PoseSE2 &p2, const PoseSE2 &p3)
 
   // Finite difference curvature: κ = 2*sin(Δα/2) / chord_length
   double chord_length = (p3.position() - p1.position()).norm();
-  if (chord_length < 1e-3)
+  if (chord_length < 1e-3) {
     return 0.0;  // Degenerate case
+  }
 
   double kappa = 2.0 * sin(d_angle / 2.0) / chord_length;
 
@@ -420,10 +443,12 @@ int checkFeasibility(const TimedElasticBand &teb, const ObstacleMap2D &esdf, con
                      double lookahead) {
   double progress = 0.0;
   for (size_t i = 0; i < teb.sizePoses(); i++) {
-    if (i > 0)
+    if (i > 0) {
       progress += (teb.pose(i).position() - teb.pose(i - 1).position()).norm();
-    if (progress > lookahead)
+    }
+    if (progress > lookahead) {
       return -1;
+    }
 
     const auto &pose = teb.pose(i);
     const double px = pose.x();
@@ -439,10 +464,11 @@ int checkFeasibility(const TimedElasticBand &teb, const ObstacleMap2D &esdf, con
 
       const double dist = esdf.query(wx, wy).distance - c.radius;
 
-      if (dist > 0.0)
+      if (dist > 0.0) {
         continue;
-      else
+      } else {
         return static_cast<int>(i);
+      }
     }
   }
   return -1;

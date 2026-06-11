@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-22.04
+    container:
+      image: ros:humble
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: ros2_ws/src/nav2_teb_controller
+
+      - name: Install dependencies
+        run: |
+          apt-get update
+          rosdep update
+          rosdep install --from-paths ros2_ws/src --ignore-src -r -y
+
+      - name: Build
+        run: |
+          . /opt/ros/humble/setup.sh
+          cd ros2_ws
+          colcon build --packages-select nav2_teb_controller
+
+      - name: Run Tests
+        run: |
+          . /opt/ros/humble/setup.sh
+          cd ros2_ws
+          colcon test --packages-select nav2_teb_controller
+          colcon test-result --verbose
