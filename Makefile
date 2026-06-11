@@ -1,0 +1,50 @@
+SHELL := /bin/bash
+WS     := $(HOME)/git/ros2_ws
+PKG    := nav2_teb_controller
+SRC    := src
+
+.PHONY: help build test format format-fix lint lint-fix all
+
+help:
+	@echo "Available commands:"
+	@echo "  make build       - colcon build"
+	@echo "  make test        - colcon test"
+	@echo "  make format      - clang-format check (kein Fix)"
+	@echo "  make format-fix  - clang-format mit Fix"
+	@echo "  make lint        - clang-tidy check (kein Fix)"
+	@echo "  make lint-fix    - clang-tidy mit Fix"
+	@echo "  make all         - format + lint + build + test"
+
+build:
+	source /opt/ros/jazzy/setup.bash && \
+	cd $(WS) && colcon build \
+		--packages-select $(PKG) \
+		--cmake-args -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+test:
+	source /opt/ros/jazzy/setup.bash && \
+	cd $(WS) && colcon test --packages-select $(PKG) && \
+	colcon test-result --verbose
+
+format:
+	find $(SRC) -name "*.cpp" -o -name "*.hpp" | \
+	xargs clang-format --dry-run --Werror --style=file
+
+format-fix:
+	find $(SRC) -name "*.cpp" -o -name "*.hpp" | \
+	xargs clang-format -i --style=file
+
+lint:
+	find $(SRC) -name "*.cpp" | xargs \
+	clang-tidy \
+		-p $(WS)/build/$(PKG) \
+		--config-file=.clang-tidy
+
+lint-fix:
+	find $(SRC) -name "*.cpp" | xargs \
+	clang-tidy \
+		-p $(WS)/build/$(PKG) \
+		--config-file=.clang-tidy \
+		--fix-errors
+
+all: format lint build test
