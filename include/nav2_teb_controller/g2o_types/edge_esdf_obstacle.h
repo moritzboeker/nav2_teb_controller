@@ -58,11 +58,11 @@ public:
       const double wy = py + st * c.offset.x() + ct * c.offset.y();
 
       const double dist = esdf_->query(wx, wy).distance;
-      // if (dist < 1e-3) { _error.fill(1e6); return; }
-      // if (dist <= c.radius)
-      //   _error[i] =  1.0 + std::expm1(exp_scale * ((min_dist + c.radius) - dist)); 
-      // else
-      _error[i] =  penaltyBoundFromBelow(dist, min_dist + c.radius , epsilon);
+
+      _error[i] =  penaltyBoundFromBelow(dist, min_dist + c.radius, epsilon);
+
+      if (dist <= c.radius)
+        _error[i] += std::expm1(exp_scale * (c.radius - dist)) / exp_scale;
     }
 
     // ── Inflation penalty at robot center ────────────────────────────────────

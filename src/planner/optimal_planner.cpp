@@ -924,6 +924,11 @@ void DiscreteTEBPlanner::AddEdgesObstacles() {
 void DiscreteTEBPlanner::addEdgesESDFObstacles() {
   const double weight_obstacle = params_.FollowPath.weights.weight_obstacle;
   const double weight_inflation = params_.FollowPath.weights.weight_inflation;
+  const double min_dist = params_.FollowPath.obstacles.min_obstacle_dist;
+  const double cutoff_buffer = params_.FollowPath.obstacles.cutoff_dist;
+  const auto &raw_fp = costmap_ros_->getRobotFootprint();
+  const double circum_radius = costmap_ros_->getLayeredCostmap()->getCircumscribedRadius();
+  double cutoff = circum_radius + min_dist + cutoff_buffer;
 
   if (weight_obstacle == 0.0 && weight_inflation == 0.0)
     return;
@@ -937,7 +942,11 @@ void DiscreteTEBPlanner::addEdgesESDFObstacles() {
     information(i, i) = weight_obstacle * weight_multiplier_;
   information(dim - 1, dim - 1) = weight_inflation;
 
-  for (std::size_t i = 0; i < teb_.sizePoses(); ++i) {
+  for (std::size_t i = 1; i < teb_.sizePoses()-1; ++i) {
+    // Skip far obstacles
+    const Eigen::Vector2d& pos = teb_.pose(i).position();
+    if (esdf_->query(pos.x(), pos.y()).distance > culling_dist) continue;
+
     auto *e = new EdgeESDFObstacle();
     e->resize(n_circles);  // ← setzt _dimension vor addEdge
     e->setVertex(0, pose_vertices_[i]);
@@ -945,6 +954,9 @@ void DiscreteTEBPlanner::addEdgesESDFObstacles() {
     e->setFootprint(footprint_);
     e->setTebConfig(params_);
     e->setInformation(information);
+    auto* rk = new g2o::RobustKernelHuber();
+    rk->setDelta(1.0);
+    e->setRobustKernel(rk);
     optimizer_->addEdge(e);
   }
 }
