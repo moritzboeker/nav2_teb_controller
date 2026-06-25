@@ -944,8 +944,8 @@ void DiscreteTEBPlanner::addEdgesESDFObstacles() {
 
   for (std::size_t i = 1; i < teb_.sizePoses()-1; ++i) {
     // Skip far obstacles
-    // const Eigen::Vector2d& pos = teb_.pose(i).position();
-    // if (esdf_->query(pos.x(), pos.y()).distance() > cutoff) continue;
+    const Eigen::Vector2d& pos = teb_.pose(i).position();
+    if (esdf_->query(pos.x(), pos.y()).distance > cutoff) continue;
 
     auto *e = new EdgeESDFObstacle();
     e->resize(n_circles);  // ← setzt _dimension vor addEdge
