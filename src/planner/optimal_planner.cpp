@@ -284,7 +284,7 @@ bool DiscreteTEBPlanner::buildGraph() {
                                {params_.FollowPath.weights.weight_snap_max_x,
                                 params_.FollowPath.weights.weight_snap_max_theta});
   // AddEdgesG3Continuity();
-  addEdgesGeneric<EdgeG3Continuity, 1>({3, 0, 2, 0, 1},
+  addEdgesGeneric<EdgeG3Continuity, 1>({3, 2, 2, 0, 1},
                                        {params_.FollowPath.weights.weight_g3_continuity});
   // AddEdgesSteeringAngleGoal();
   addEdgesGeneric<EdgeSteeringAngleGoal, 1>(
@@ -944,8 +944,8 @@ void DiscreteTEBPlanner::addEdgesESDFObstacles() {
 
   for (std::size_t i = 1; i < teb_.sizePoses()-1; ++i) {
     // Skip far obstacles
-    const Eigen::Vector2d& pos = teb_.pose(i).position();
-    if (esdf_->query(pos.x(), pos.y()).distance > culling_dist) continue;
+    // const Eigen::Vector2d& pos = teb_.pose(i).position();
+    // if (esdf_->query(pos.x(), pos.y()).distance() > cutoff) continue;
 
     auto *e = new EdgeESDFObstacle();
     e->resize(n_circles);  // ← setzt _dimension vor addEdge

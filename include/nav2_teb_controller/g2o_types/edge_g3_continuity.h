@@ -42,7 +42,7 @@ public:
    */
   EdgeG3Continuity()
   {
-    this->resize(3);
+    this->resize(5);
   }
 
   /**
@@ -52,14 +52,14 @@ public:
   {
     // read params
     const double wheelbase = params_->FollowPath.robot.wheelbase;
-    // const double steering_rate_max = params_->FollowPath.robot.steering_rate_max;
-    // const double penalty_eps = params_->FollowPath.optimizer.penalty_epsilon;
+    const double steering_rate_max = params_->FollowPath.robot.steering_rate_max;
+    const double penalty_eps = params_->FollowPath.optimizer.penalty_epsilon;
 
     const VertexPose* pose_prev = static_cast<const VertexPose*>(_vertices[0]);
     const VertexPose* pose_curr = static_cast<const VertexPose*>(_vertices[1]);
     const VertexPose* pose_next = static_cast<const VertexPose*>(_vertices[2]);
-    // const VertexTimeDiff* dt1 = static_cast<const VertexTimeDiff*>(_vertices[3]);
-    // const VertexTimeDiff* dt2 = static_cast<const VertexTimeDiff*>(_vertices[4]);
+    const VertexTimeDiff* dt1 = static_cast<const VertexTimeDiff*>(_vertices[3]);
+    const VertexTimeDiff* dt2 = static_cast<const VertexTimeDiff*>(_vertices[4]);
 
     // Approximate path length between poses
     const Eigen::Vector2d diff1 = pose_curr->position() - pose_prev->position();
@@ -96,18 +96,13 @@ public:
     // const double delta_phi = angles::normalize_angle(phi2 - phi1);
     const double delta_phi  = phi2_ - phi1;  // kein normalize_angle nach unwrap!
 
-    // // --- Unwrap phi2 relativ zu phi1 (konsistente Vorzeichen wie in EdgeSteeringRate)
-    // const double phi2 = unwrapSteeringAngle(phi2_raw, phi1_raw);
-    // const double phi1 = phi1_raw;
-
     // // --- Steuerrate: delta_phi / mittlere Zeit der beiden Segmente
-    // const double avg_dt     = 0.5 * (dt1->dt() + dt2->dt());
-    // const double delta_phi  = phi2 - phi1;  // kein normalize_angle nach unwrap!
-    // const double steer_rate = (avg_dt > 1e-6) ? (std::abs(delta_phi) / avg_dt) : 0.0;
+    const double avg_dt     = 0.5 * (dt1->dt() + dt2->dt());
+    const double steer_rate = (avg_dt > 1e-6) ? (std::abs(delta_phi) / avg_dt) : 0.0;
 
     // 3. Der Fehler ist diese normalisierte Winkeldifferenz.
-    _error[0] = delta_phi;
-    // _error[0] = penaltyBoundFromBelow(delta_dot_max, steer_rate, penalty_eps);
+    // _error[0] = delta_phi;
+    _error[0] = penaltyBoundFromBelow(steering_rate_max, steer_rate, penalty_eps);
   }
 
 public:

@@ -61,34 +61,29 @@ public:
     double angle_diff1 = angles::normalize_angle( conf2->theta() - conf1->theta() );
     double angle_diff2 = angles::normalize_angle( conf3->theta() - conf2->theta() );
 
-    double phi1, phi2;
-    if (std::abs(dist1) < 1e-12)
-        phi1 = 0;
-    else
+    if (dist1 < 1e-12 || dist2 < 1e-12)
     {
-        const double sign1 = (delta_s1.x()*std::cos(conf1->theta()) 
-                            + delta_s1.y()*std::sin(conf1->theta())) >= 0.0 ? 1.0 : -1.0;
-        if (exact_arc_length)
-            phi1 = std::atan(wheelbase / dist1 * 2.0*std::sin(angle_diff1/2.0));
-        else
-            phi1 = std::atan(wheelbase / dist1 * angle_diff1);
-        phi1 *= sign1;
+        _error[0] = 0.0;
+        return;
     }
 
-    if (std::abs(dist2) < 1e-12)
-        phi2 = phi1;
-    else
-    {
-        const double sign2 = (delta_s1.x()*std::cos(conf1->theta()) 
-                            + delta_s1.y()*std::sin(conf1->theta())) >= 0.0 ? 1.0 : -1.0;
-        if (exact_arc_length)
-            phi2 = std::atan(wheelbase / dist2 * 2.0*std::sin(angle_diff2/2.0));
-        else
-            phi2 = std::atan(wheelbase / dist2 * angle_diff2);
-        phi2 *= sign2;
-    }
-    _error[0] = penaltyBoundToInterval(
-        angles::normalize_angle(phi2 - phi1)*2.0 / (dt1->dt() + dt2->dt()), steering_rate_max, penalty_eps);
+    const double sign1 = (delta_s1.dot(Eigen::Vector2d(std::cos(conf1->theta()), std::sin(conf1->theta()))) >= 0.0) ? 1.0 : -1.0;
+    const double sign2 = (delta_s2.dot(Eigen::Vector2d(std::cos(conf2->theta()), std::sin(conf2->theta()))) >= 0.0) ? 1.0 : -1.0;
+
+    double phi1 = exact_arc_length
+        ? std::atan((wheelbase / dist1) * 2.0 * std::sin(angle_diff1 / 2.0))
+        : std::atan((wheelbase / dist1) * angle_diff1);
+    phi1 *= sign1;
+
+    double phi2 = exact_arc_length
+        ? std::atan((wheelbase / dist2) * 2.0 * std::sin(angle_diff2 / 2.0))
+        : std::atan((wheelbase / dist2) * angle_diff2);
+    phi2 *= sign2;
+
+    const double avg_dt = 0.5 * (dt1->dt() + dt2->dt());
+    const double steer_rate = (avg_dt > 1e-12) ? (phi2 - phi1) / avg_dt : 0.0;
+
+    _error[0] = penaltyBoundToInterval(steer_rate, steering_rate_max, penalty_eps);
   }
 
 public:
