@@ -457,8 +457,7 @@ int checkFeasibility(const TimedElasticBand &teb, const ObstacleMap2D &esdf, con
     const double st = std::sin(pose.theta());
 
     const auto &circles = fp.circles();
-    for (int j = 0; j < static_cast<int>(circles.size()); j++) {
-      const auto &c = circles[j];
+    for (const auto &c : circles) {
       const double wx = px + ct * c.offset.x() - st * c.offset.y();
       const double wy = py + st * c.offset.x() + ct * c.offset.y();
 

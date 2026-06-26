@@ -155,7 +155,7 @@ geometry_msgs::msg::TwistStamped TEBController::computeVelocityCommands(
 
   // 3. Plan, wart start or reinit
   bool final_goal =
-      (goal_idx == (global_plan_.poses.size() - 1)) || params_.FollowPath.optimizer.fix_goal;
+      (goal_idx == ((int)global_plan_.poses.size() - 1)) || params_.FollowPath.optimizer.fix_goal;
   teb_planner_->setFixedGoal(final_goal);
   teb_planner_->setFeedback(last_ackermann_cmd_.drive);
   bool success = planner_->plan(transformed_plan, velocity);

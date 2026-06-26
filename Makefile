@@ -22,6 +22,13 @@ build:
 		--packages-select $(PKG) \
 		--cmake-args -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
+build-clean:
+	source /opt/ros/jazzy/setup.bash && \
+	cd $(WS) && colcon build \
+		--packages-select $(PKG) \
+		--cmake-args -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+		--cmake-clean-first
+
 test-with-log:
 	source /opt/ros/jazzy/setup.bash && \
 	cd $(WS) && colcon test --packages-select $(PKG) --event-handlers console_direct+ && \
@@ -41,16 +48,19 @@ format-fix:
 	xargs clang-format -i --style=file
 
 lint:
-	find $(SRC) -name "*.cpp" | xargs \
-	clang-tidy \
+	run-clang-tidy \
 		-p $(WS)/build/$(PKG) \
-		--config-file=.clang-tidy
+		-config-file .clang-tidy \
+		-header-filter=".*nav2_teb_controller/(g2o_types|core|obstacles|homotopy|planner).*" \
+		$(shell find $(SRC) -name "*.cpp")
 
 lint-fix:
-	find $(SRC) -name "*.cpp" | xargs \
-	clang-tidy \
+	run-clang-tidy \
 		-p $(WS)/build/$(PKG) \
-		--config-file=.clang-tidy \
+		-config-file .clang-tidy \
+		-header-filter=".*nav2_teb_controller/(g2o_types|core|obstacles|homotopy|planner).*" \
+		-fix \
+		$(shell find $(SRC) -name "*.cpp")
 		--fix-errors
 
 all: format lint build test

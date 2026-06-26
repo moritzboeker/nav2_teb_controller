@@ -23,7 +23,7 @@ struct Obstacle {
   double radius;  // 0 für Punkt-Obstacles
 };
 
-class EdgeCostmapObstacle : public BaseTebUnaryEdge<2, nullptr_t, VertexPose>
+class EdgeCostmapObstacle : public BaseTebUnaryEdge<2, std::nullptr_t, VertexPose>
 {
 public:
   void computeError() override

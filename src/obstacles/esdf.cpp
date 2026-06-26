@@ -49,7 +49,7 @@ void ObstacleMap2D::update(const uint8_t *data, unsigned nx, unsigned ny, double
 // ─────────────────────────────────────────────────────────────────────────────
 
 void ObstacleMap2D::phase1_columnScan(const std::vector<bool> &occ) {
-  const double INF = static_cast<double>(ny_ * ny_ + 1);
+  const auto INF = static_cast<double>(ny_ * ny_ + 1);
 
   for (unsigned x = 0; x < nx_; ++x) {
     // Forward pass

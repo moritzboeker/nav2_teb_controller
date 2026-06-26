@@ -5,11 +5,13 @@ namespace nav2_teb_controller {
 DiscreteTEBPlanner::DiscreteTEBPlanner(const teb_controller::Params &params,
                                        const Footprint &footprint,
                                        nav2_costmap_2d::Costmap2DROS *costmap_ros)
-    : params_(params), footprint_(footprint), costmap_ros_(costmap_ros) {
+    : params_(params)
+    , footprint_(footprint)
+    , costmap_ros_(costmap_ros)
+    , cost_(std::numeric_limits<double>::max()) {
   optimizer_ = initOptimizer();
   // obstacles_ = obstacles; // implement later
   // via_points_ = via_points;  // implement later
-  cost_ = std::numeric_limits<double>::max();
   // prefer_rotdir_ = RotType::none;  // implement later
 
   vel_start_ = {false, geometry_msgs::msg::Twist()};
@@ -942,10 +944,11 @@ void DiscreteTEBPlanner::addEdgesESDFObstacles() {
     information(i, i) = weight_obstacle * weight_multiplier_;
   information(dim - 1, dim - 1) = weight_inflation;
 
-  for (std::size_t i = 1; i < teb_.sizePoses()-1; ++i) {
+  for (std::size_t i = 1; i < teb_.sizePoses() - 1; ++i) {
     // Skip far obstacles
-    const Eigen::Vector2d& pos = teb_.pose(i).position();
-    if (esdf_->query(pos.x(), pos.y()).distance > cutoff) continue;
+    const Eigen::Vector2d &pos = teb_.pose(i).position();
+    if (esdf_->query(pos.x(), pos.y()).distance > cutoff)
+      continue;
 
     auto *e = new EdgeESDFObstacle();
     e->resize(n_circles);  // ← setzt _dimension vor addEdge
@@ -954,7 +957,7 @@ void DiscreteTEBPlanner::addEdgesESDFObstacles() {
     e->setFootprint(footprint_);
     e->setTebConfig(params_);
     e->setInformation(information);
-    auto* rk = new g2o::RobustKernelHuber();
+    auto *rk = new g2o::RobustKernelHuber();
     rk->setDelta(1.0);
     e->setRobustKernel(rk);
     optimizer_->addEdge(e);
