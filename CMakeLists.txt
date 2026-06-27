@@ -65,6 +65,10 @@ target_include_directories(nav2_teb_controller PUBLIC
   ${EIGEN3_INCLUDE_DIRS}
 )
 
+target_include_directories(nav2_teb_controller SYSTEM PUBLIC
+  ${costmap_converter_INCLUDE_DIRS}
+)
+
 # ament deps FIRST — establishes plain signature for target_link_libraries
 ament_target_dependencies(nav2_teb_controller
   rclcpp

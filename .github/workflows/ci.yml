@@ -31,11 +31,19 @@ jobs:
           rosdep update
           rosdep install --from-paths ros2_ws/src --ignore-src -r -y
 
-      - name: Build
+
+      - name: Build costmap_converter
         run: |
           . /opt/ros/jazzy/setup.sh
           cd ros2_ws
-          colcon build --packages-select costmap_converter_msgs costmap_converter nav2_teb_controller
+          colcon build --packages-select costmap_converter_msgs costmap_converter
+
+      - name: Build nav2_teb_controller
+        run: |
+          . /opt/ros/jazzy/setup.sh
+          . ros2_ws/install/setup.sh
+          cd ros2_ws
+          colcon build --packages-select nav2_teb_controller
 
       - name: Run Tests
         run: |
