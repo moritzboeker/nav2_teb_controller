@@ -35,7 +35,7 @@ jobs:
         run: |
           . /opt/ros/jazzy/setup.sh
           cd ros2_ws
-          colcon build --packages-select costcostmap_converter_msgs costmap_converter nav2_teb_controller
+          colcon build --packages-select costmap_converter_msgs costmap_converter nav2_teb_controller
 
       - name: Run Tests
         run: |
