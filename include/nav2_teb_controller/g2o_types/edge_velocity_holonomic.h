@@ -47,7 +47,7 @@ public:
   /**
    * @brief Actual cost function
    */  
-  void computeError()
+  void computeError() override
   {
     // read params
     const double v_max_x = params_->FollowPath.robot.v_max_x;
@@ -57,9 +57,9 @@ public:
     const double penalty_eps = params_->FollowPath.optimizer.penalty_epsilon;
 
     // TEB_ASSERT_MSG(cfg_, "You must call setTebConfig on EdgeVelocityHolonomic()");
-    const VertexPose* conf1 = static_cast<const VertexPose*>(_vertices[0]);
-    const VertexPose* conf2 = static_cast<const VertexPose*>(_vertices[1]);
-    const VertexTimeDiff* deltaT = static_cast<const VertexTimeDiff*>(_vertices[2]);
+    const auto* conf1 = dynamic_cast<const VertexPose*>(_vertices[0]);
+    const auto* conf2 = dynamic_cast<const VertexPose*>(_vertices[1]);
+    const auto* deltaT = dynamic_cast<const VertexTimeDiff*>(_vertices[2]);
     Eigen::Vector2d deltaS = conf2->position() - conf1->position();
     
     double cos_theta1 = std::cos(conf1->theta());
@@ -82,7 +82,7 @@ public:
     //                "EdgeVelocityHolonomic::computeError() _error[0]=%f _error[1]=%f _error[2]=%f\n",_error[0],_error[1],_error[2]);
   }
    
-public:
+
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 

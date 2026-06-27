@@ -48,18 +48,18 @@ public:
   /**
    * @brief Actual cost function
    */
-  void computeError()
+  void computeError() override
   {
     // read params
     const double wheelbase = params_->FollowPath.robot.wheelbase;
     const double steering_rate_max = params_->FollowPath.robot.steering_rate_max;
     const double penalty_eps = params_->FollowPath.optimizer.penalty_epsilon;
 
-    const VertexPose* pose_prev = static_cast<const VertexPose*>(_vertices[0]);
-    const VertexPose* pose_curr = static_cast<const VertexPose*>(_vertices[1]);
-    const VertexPose* pose_next = static_cast<const VertexPose*>(_vertices[2]);
-    const VertexTimeDiff* dt1 = static_cast<const VertexTimeDiff*>(_vertices[3]);
-    const VertexTimeDiff* dt2 = static_cast<const VertexTimeDiff*>(_vertices[4]);
+    const auto* pose_prev = dynamic_cast<const VertexPose*>(_vertices[0]);
+    const auto* pose_curr = dynamic_cast<const VertexPose*>(_vertices[1]);
+    const auto* pose_next = dynamic_cast<const VertexPose*>(_vertices[2]);
+    const auto* dt1 = dynamic_cast<const VertexTimeDiff*>(_vertices[3]);
+    const auto* dt2 = dynamic_cast<const VertexTimeDiff*>(_vertices[4]);
 
     // Approximate path length between poses
     const Eigen::Vector2d diff1 = pose_curr->position() - pose_prev->position();
@@ -105,9 +105,9 @@ public:
     _error[0] = penaltyBoundFromBelow(steering_rate_max, steer_rate, penalty_eps);
   }
 
-public:
+
   /// Pick the equivalent angle (φ or φ±π) closest to reference
-  double unwrapSteeringAngle(double phi, double reference)
+  static double unwrapSteeringAngle(double phi, double reference)
   {
     const double d0 = std::abs(angles::normalize_angle(phi - reference));
     const double d1 = std::abs(angles::normalize_angle(phi + M_PI - reference));

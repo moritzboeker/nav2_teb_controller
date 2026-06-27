@@ -39,10 +39,10 @@ public:
   /**
    * @brief Actual cost function
    */
-  void computeError() {
+  void computeError() override {
     // TEB_ASSERT_MSG(cfg_, "You must call setTebConfig on EdgePathSmoothness()");
-    const VertexPose *pose1 = static_cast<const VertexPose *>(_vertices[0]);
-    const VertexPose *pose2 = static_cast<const VertexPose *>(_vertices[1]);
+    const auto *pose1 = dynamic_cast<const VertexPose *>(_vertices[0]);
+    const auto *pose2 = dynamic_cast<const VertexPose *>(_vertices[1]);
 
     // Calculate change value of angle
     // _error[0] = pow(pose2->theta() - pose1->theta(), 2);
@@ -51,7 +51,7 @@ public:
     // TEB_ASSERT_MSG(std::isfinite(_error[0]), "EdgePathSmoothness::computeError() _error[0]=%f\n", _error[0]);
   }
 
-public:
+
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 

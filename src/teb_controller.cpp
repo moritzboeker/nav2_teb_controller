@@ -1,5 +1,7 @@
 #include "nav2_teb_controller/teb_controller.hpp"
 
+#include <memory>
+
 namespace nav2_teb_controller {
 
 void TEBController::configure(const rclcpp_lifecycle::LifecycleNode::WeakPtr &parent,
@@ -30,8 +32,8 @@ void TEBController::configure(const rclcpp_lifecycle::LifecycleNode::WeakPtr &pa
       {"warn", rclcpp::Logger::Level::Warn},   {"error", rclcpp::Logger::Level::Error},
       {"fatal", rclcpp::Logger::Level::Fatal},
   };
-  const auto level =
-      level_map.count(log_level_str) ? level_map.at(log_level_str) : rclcpp::Logger::Level::Info;
+  const auto level = level_map.contains(log_level_str) ? level_map.at(log_level_str)
+                                                       : rclcpp::Logger::Level::Info;
   logger_.set_level(level);
   rclcpp::get_logger("optimal_planner").set_level(level);
 
@@ -43,8 +45,8 @@ void TEBController::configure(const rclcpp_lifecycle::LifecycleNode::WeakPtr &pa
       });
 
   // Init Costmap converter
-  intra_proc_node_.reset(
-      new rclcpp::Node("costmap_converter", node->get_namespace(), rclcpp::NodeOptions()));
+  intra_proc_node_ = std::make_shared<rclcpp::Node>("costmap_converter", node->get_namespace(),
+                                                    rclcpp::NodeOptions());
   initCostmapConverter();
 
   // All sub-systems take const ref into params_.FollowPath — no copying
@@ -171,7 +173,7 @@ geometry_msgs::msg::TwistStamped TEBController::computeVelocityCommands(
   // 5. Check for collision
   const double feasibility_check = params_.FollowPath.obstacles.feasibility_check;
   int index = checkFeasibility(teb, esdf_, footprint_, feasibility_check);
-  const bool stop_cmd = (index < 0) ? false : true;
+  const bool stop_cmd = index >= 0;
 
   // 5. Visualize
   const std::string frame_id = costmap_ros_->getGlobalFrameID();
@@ -228,7 +230,7 @@ void TEBController::initCostmapConverter() {
     return;
   }
   try {
-    auto costmap = costmap_ros_->getCostmap();
+    auto *costmap = costmap_ros_->getCostmap();
     costmap_converter_ = costmap_converter_loader_.createSharedInstance(plugin_name);
     std::string converter_name = costmap_converter_loader_.getName(plugin_name);
     RCLCPP_INFO(logger_, "library path : %s",

@@ -33,29 +33,29 @@ public:
 
   // ── Access Sequences ─────────────────────────────────────────────────────
   std::vector<PoseSE2> &poses() { return poses_; }
-  const std::vector<PoseSE2> &poses() const { return poses_; }
+  [[nodiscard]] const std::vector<PoseSE2> &poses() const { return poses_; }
 
   std::vector<double> &timediffs() { return timediffs_; }
-  const std::vector<double> &timediffs() const { return timediffs_; }
+  [[nodiscard]] const std::vector<double> &timediffs() const { return timediffs_; }
 
   // ── Access Single Elements ────────────────────────────────────────────────
   PoseSE2 &pose(std::size_t i) { return poses_.at(i); }
-  const PoseSE2 &pose(std::size_t i) const { return poses_.at(i); }
+  [[nodiscard]] const PoseSE2 &pose(std::size_t i) const { return poses_.at(i); }
 
   double &timeDiff(std::size_t i) { return timediffs_.at(i); }
-  const double &timeDiff(std::size_t i) const { return timediffs_.at(i); }
+  [[nodiscard]] const double &timeDiff(std::size_t i) const { return timediffs_.at(i); }
 
   PoseSE2 &backPose() { return poses_.back(); }
-  const PoseSE2 &backPose() const { return poses_.back(); }
+  [[nodiscard]] const PoseSE2 &backPose() const { return poses_.back(); }
 
   double &backTimeDiff() { return timediffs_.back(); }
-  const double &backTimeDiff() const { return timediffs_.back(); }
+  [[nodiscard]] const double &backTimeDiff() const { return timediffs_.back(); }
 
   // ── Size & Status ─────────────────────────────────────────────────────────
-  std::size_t sizePoses() const { return poses_.size(); }
-  std::size_t sizeTimeDiffs() const { return timediffs_.size(); }
+  [[nodiscard]] std::size_t sizePoses() const { return poses_.size(); }
+  [[nodiscard]] std::size_t sizeTimeDiffs() const { return timediffs_.size(); }
 
-  bool isInit() const { return !poses_.empty() && (timediffs_.size() == poses_.size() - 1); }
+  [[nodiscard]] bool isInit() const { return !poses_.empty() && (timediffs_.size() == poses_.size() - 1); }
 
   // ── Add / Insert / Delete ─────────────────────────────────────────────────
   void addPose(const PoseSE2 &pose) { poses_.push_back(pose); }
@@ -108,15 +108,15 @@ public:
   }
 
   // ── Utility ───────────────────────────────────────────────────────────────
-  double sumTimeDiffs() const {
+  [[nodiscard]] double sumTimeDiffs() const {
     return std::accumulate(timediffs_.begin(), timediffs_.end(), 0.0);
   }
 
-  double sumTimeDiffsUpToIdx(std::size_t i) const {
+  [[nodiscard]] double sumTimeDiffsUpToIdx(std::size_t i) const {
     return std::accumulate(timediffs_.begin(), timediffs_.begin() + i, 0.0);
   }
 
-  double accumulatedDistance() const {
+  [[nodiscard]] double accumulatedDistance() const {
     double dist = 0.0;
     for (std::size_t i = 1; i < poses_.size(); ++i) {
       dist += (poses_[i].position() - poses_[i - 1].position()).norm();

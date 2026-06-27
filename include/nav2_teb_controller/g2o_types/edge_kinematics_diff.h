@@ -1,5 +1,5 @@
 #ifndef _EDGE_KINEMATICS_DIFF_H
-#define _EDGE_KINEMATICS_DIFF_H
+#define EDGE_KINEMATICS_DIFF_H
 
 #include "nav2_teb_controller/g2o_types/vertex_pose.h"
 #include "nav2_teb_controller/g2o_types/penalties.h"
@@ -44,11 +44,11 @@ public:
   /**
    * @brief Actual cost function
    */    
-  void computeError()
+  void computeError() override
   {
     // TEB_ASSERT_MSG(cfg_, "You must call setTebConfig on EdgeKinematicsDiffDrive()");
-    const VertexPose* conf1 = static_cast<const VertexPose*>(_vertices[0]);
-    const VertexPose* conf2 = static_cast<const VertexPose*>(_vertices[1]);
+    const auto* conf1 = dynamic_cast<const VertexPose*>(_vertices[0]);
+    const auto* conf2 = dynamic_cast<const VertexPose*>(_vertices[1]);
     
     Eigen::Vector2d deltaS = conf2->position() - conf1->position();
 
@@ -111,7 +111,7 @@ public:
 #endif
 #endif
       
-public:
+
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW   
 };
 

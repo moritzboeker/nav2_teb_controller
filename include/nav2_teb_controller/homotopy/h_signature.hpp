@@ -34,17 +34,17 @@ public:
    * @param other Other H-signature
    * @param tolerance Numerical tolerance for comparison
    */
-  bool isEqual(const HSignature &other, double tolerance = 1e-3) const;
+  [[nodiscard]] bool isEqual(const HSignature &other, double tolerance = 1e-3) const;
 
   /**
    * @brief Check if signature is valid (no NaN/Inf)
    */
-  bool isValid() const;
+  [[nodiscard]] bool isValid() const;
 
   /**
    * @brief Raw signature vector (one complex value per obstacle)
    */
-  const std::vector<std::complex<double>> &signature() const { return signature_; }
+  [[nodiscard]] const std::vector<std::complex<double>> &signature() const { return signature_; }
 
 private:
   /**
@@ -53,7 +53,7 @@ private:
    * @param p2 End of segment
    * @param obs_center Obstacle center
    */
-  std::complex<double> computeSegmentContribution(const Eigen::Vector2d &p1,
+  [[nodiscard]] std::complex<double> computeSegmentContribution(const Eigen::Vector2d &p1,
                                                   const Eigen::Vector2d &p2,
                                                   const Eigen::Vector2d &obs_center) const;
 

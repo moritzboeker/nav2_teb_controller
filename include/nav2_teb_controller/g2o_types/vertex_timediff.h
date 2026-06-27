@@ -44,19 +44,19 @@ public:
     * @see estimate
     * @return reference to dt
     */ 
-  inline double& dt() {return _estimate;}
+  double& dt() {return _estimate;}
   
   /**
     * @brief Access the timediff value of the vertex (read-only)
     * @see estimate
     * @return const reference to dt
     */ 
-  inline const double& dt() const {return _estimate;}
+  [[nodiscard]] const double& dt() const {return _estimate;}
   
   /**
     * @brief Set the underlying TimeDiff estimate \f$ \Delta T \f$ to default.
     */ 
-  virtual void setToOriginImpl() override
+  void setToOriginImpl() override
   {
     _estimate = 0.1;
   }
@@ -66,7 +66,7 @@ public:
     * A simple addition implements what we want.
     * @param update increment that should be added to the previous esimate
     */ 
-  virtual void oplusImpl(const double* update) override
+  void oplusImpl(const double* update) override
   {
       _estimate += *update;
   }
@@ -76,7 +76,7 @@ public:
     * @param is input stream
     * @return always \c true
     */ 
-  virtual bool read(std::istream& is) override
+  bool read(std::istream& is) override
   {
     is >> _estimate;
     return true;
@@ -87,7 +87,7 @@ public:
     * @param os output stream
     * @return \c true if the export was successful, otherwise \c false
     */ 
-  virtual bool write(std::ostream& os) const override
+  bool write(std::ostream& os) const override
   {
     os << estimate();
     return os.good();

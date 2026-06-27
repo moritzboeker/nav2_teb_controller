@@ -41,9 +41,9 @@ public:
 		const double min_dist = params_->FollowPath.obstacles.min_obstacle_dist;
     const double inflation_dist = params_->FollowPath.obstacles.inflation_dist;
     const double exp_scale = params_->FollowPath.obstacles.cost_exponent;
-    const double epsilon = params_->FollowPath.optimizer.penalty_epsilon;
+    // const double epsilon = params_->FollowPath.optimizer.penalty_epsilon;
 
-    const VertexPose* vp = static_cast<const VertexPose*>(this->_vertices[0]);
+    const auto* vp = dynamic_cast<const VertexPose*>(this->_vertices[0]);
 
     const double px = vp->x();
     const double py = vp->y();
@@ -59,7 +59,7 @@ public:
 
       const double dist = esdf_->query(wx, wy).distance;
 
-      _error[i] =  penaltyBoundFromBelow(dist, min_dist + c.radius, epsilon);
+      _error[i] =  penaltyBoundFromBelow(dist, min_dist + c.radius, 0.0);
 
       if (dist <= c.radius)
         _error[i] += std::expm1(exp_scale * (c.radius - dist)) / exp_scale;

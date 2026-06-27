@@ -49,7 +49,7 @@ public:
   /**
    * @brief Actual cost function
    */   
-  void computeError()
+  void computeError() override
   {
     // read params
     const double a_max_x = params_->FollowPath.robot.a_max_x;
@@ -58,11 +58,11 @@ public:
     const bool exact_arc_length = params_->FollowPath.optimizer.exact_arc_length;
 
     // TEB_ASSERT_MSG(cfg_, "You must call setTebConfig on EdgeAcceleration()");
-    const VertexPose* pose1 = static_cast<const VertexPose*>(_vertices[0]);
-    const VertexPose* pose2 = static_cast<const VertexPose*>(_vertices[1]);
-    const VertexPose* pose3 = static_cast<const VertexPose*>(_vertices[2]);
-    const VertexTimeDiff* dt1 = static_cast<const VertexTimeDiff*>(_vertices[3]);
-    const VertexTimeDiff* dt2 = static_cast<const VertexTimeDiff*>(_vertices[4]);
+    const auto* pose1 = dynamic_cast<const VertexPose*>(_vertices[0]);
+    const auto* pose2 = dynamic_cast<const VertexPose*>(_vertices[1]);
+    const auto* pose3 = dynamic_cast<const VertexPose*>(_vertices[2]);
+    const auto* dt1 = dynamic_cast<const VertexTimeDiff*>(_vertices[3]);
+    const auto* dt2 = dynamic_cast<const VertexTimeDiff*>(_vertices[4]);
 
     // VELOCITY & ACCELERATION
     const Eigen::Vector2d diff1 = pose2->position() - pose1->position();
@@ -220,7 +220,7 @@ public:
 #endif
 
       
-public: 
+
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
    
 };   

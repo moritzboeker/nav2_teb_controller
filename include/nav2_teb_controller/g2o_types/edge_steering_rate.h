@@ -40,7 +40,7 @@ public:
   /**
    * @brief Actual cost function
    */  
-  void computeError()
+  void computeError() override
   {
     // read params
     const double wheelbase = params_->FollowPath.robot.wheelbase;
@@ -48,11 +48,11 @@ public:
     const double penalty_eps = params_->FollowPath.optimizer.penalty_epsilon;
     const bool exact_arc_length = params_->FollowPath.optimizer.exact_arc_length;
 
-    const VertexPose* conf1 = static_cast<const VertexPose*>(_vertices[0]);
-    const VertexPose* conf2 = static_cast<const VertexPose*>(_vertices[1]);
-    const VertexPose* conf3 = static_cast<const VertexPose*>(_vertices[2]);
-    const VertexTimeDiff* dt1 = static_cast<const VertexTimeDiff*>(_vertices[3]);
-    const VertexTimeDiff* dt2 = static_cast<const VertexTimeDiff*>(_vertices[4]);
+    const auto* conf1 = dynamic_cast<const VertexPose*>(_vertices[0]);
+    const auto* conf2 = dynamic_cast<const VertexPose*>(_vertices[1]);
+    const auto* conf3 = dynamic_cast<const VertexPose*>(_vertices[2]);
+    const auto* dt1 = dynamic_cast<const VertexTimeDiff*>(_vertices[3]);
+    const auto* dt2 = dynamic_cast<const VertexTimeDiff*>(_vertices[4]);
 
     Eigen::Vector2d delta_s1 = conf2->estimate().position() - conf1->estimate().position();
     Eigen::Vector2d delta_s2 = conf3->estimate().position() - conf2->estimate().position();
@@ -86,7 +86,7 @@ public:
     _error[0] = penaltyBoundToInterval(steer_rate, steering_rate_max, penalty_eps);
   }
 
-public:
+
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 

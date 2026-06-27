@@ -8,15 +8,22 @@ on:
 
 jobs:
   build-and-test:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     container:
-      image: ros:humble
+      image: ros:jazzy
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           path: ros2_ws/src/nav2_teb_controller
+
+      - name: Checkout costmap_converter
+        uses: actions/checkout@v4
+        with:
+          repository: rst-tu-dortmund/costmap_converter
+          ref: ros2
+          path: ros2_ws/src/costmap_converter
 
       - name: Install dependencies
         run: |
@@ -26,13 +33,13 @@ jobs:
 
       - name: Build
         run: |
-          . /opt/ros/humble/setup.sh
+          . /opt/ros/jazzy/setup.sh
           cd ros2_ws
-          colcon build --packages-select nav2_teb_controller
+          colcon build --packages-select costmap_converter nav2_teb_controller
 
       - name: Run Tests
         run: |
-          . /opt/ros/humble/setup.sh
+          . /opt/ros/jazzy/setup.sh
           cd ros2_ws
           colcon test --packages-select nav2_teb_controller
           colcon test-result --verbose

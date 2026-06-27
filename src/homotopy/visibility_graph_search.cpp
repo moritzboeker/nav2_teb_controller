@@ -28,7 +28,7 @@ void VisibilityGraphSearch::updateObstacles(const ObstacleArray &obstacles) {
 }
 
 std::vector<int> VisibilityGraphSearch::dijkstra(const VisibilityGraph &graph, int start_id,
-                                                 int goal_id) const {
+                                                 int goal_id) {
   // TODO: Priority-Queue Dijkstra auf VisibilityGraph
   (void)graph;
   (void)start_id;
@@ -37,7 +37,7 @@ std::vector<int> VisibilityGraphSearch::dijkstra(const VisibilityGraph &graph, i
 }
 
 std::vector<std::vector<int>> VisibilityGraphSearch::yenKShortestPaths(
-    const VisibilityGraph &graph, int start_id, int goal_id, int k) const {
+    const VisibilityGraph &graph, int start_id, int goal_id, int k) {
   // TODO: Yen's Algorithm — K alternative Pfade
   (void)graph;
   (void)start_id;
@@ -46,8 +46,8 @@ std::vector<std::vector<int>> VisibilityGraphSearch::yenKShortestPaths(
   return {};
 }
 
-std::vector<PoseSE2> VisibilityGraphSearch::nodePathToPoses(
-    const VisibilityGraph &graph, const std::vector<int> &node_path) const {
+std::vector<PoseSE2> VisibilityGraphSearch::nodePathToPoses(const VisibilityGraph &graph,
+                                                            const std::vector<int> &node_path) {
   // TODO: Node-IDs → PoseSE2 Sequenz
   (void)graph;
   (void)node_path;
@@ -55,7 +55,7 @@ std::vector<PoseSE2> VisibilityGraphSearch::nodePathToPoses(
 }
 
 void VisibilityGraphSearch::filterDuplicateClasses(std::vector<GraphSearchResult> &results,
-                                                   double h_sig_tolerance) const {
+                                                   double h_sig_tolerance) {
   // TODO: H-Signature Vergleich, Duplikate entfernen
   (void)results;
   (void)h_sig_tolerance;

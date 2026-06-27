@@ -42,14 +42,14 @@ public:
    */  
   EdgeAccelerationGoal()
   {
-    _measurement = NULL;
+    _measurement = nullptr;
     this->resize(3);
   }
 
   /**
    * @brief Actual cost function
    */ 
-  void computeError()
+  void computeError() override
   {
     // read params
     const double a_max_x = params_->FollowPath.robot.a_max_x;
@@ -58,9 +58,9 @@ public:
     const bool exact_arc_length = params_->FollowPath.optimizer.exact_arc_length;
 
     // TEB_ASSERT_MSG(cfg_ && _measurement, "You must call setTebConfig() and setGoalVelocity() on EdgeAccelerationGoal()");
-    const VertexPose* pose_pre_goal = static_cast<const VertexPose*>(_vertices[0]);
-    const VertexPose* pose_goal = static_cast<const VertexPose*>(_vertices[1]);
-    const VertexTimeDiff* dt = static_cast<const VertexTimeDiff*>(_vertices[2]);
+    const auto* pose_pre_goal = dynamic_cast<const VertexPose*>(_vertices[0]);
+    const auto* pose_goal = dynamic_cast<const VertexPose*>(_vertices[1]);
+    const auto* dt = dynamic_cast<const VertexTimeDiff*>(_vertices[2]);
 
     // VELOCITY & ACCELERATION
 
@@ -104,7 +104,7 @@ public:
     _measurement = &vel_goal;
   }
   
-public: 
+
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 }; 
 

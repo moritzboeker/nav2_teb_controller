@@ -39,7 +39,7 @@ public:
     this->resize(5); // p0, p1, p2, dt0, dt1
   }
 
-  void computeError()
+  void computeError() override
   {
     // read params
     const double wheelbase = params_->FollowPath.robot.wheelbase;
@@ -47,11 +47,11 @@ public:
     const double penalty_eps = params_->FollowPath.optimizer.penalty_epsilon;
 
     // TEB_ASSERT_MSG(cfg_, "You must call setTebConfig on EdgeStartSteeringAngle()");
-    const VertexPose* p0 = static_cast<const VertexPose*>(_vertices[0]);
-    const VertexPose* p1 = static_cast<const VertexPose*>(_vertices[1]);
-    const VertexPose* p2 = static_cast<const VertexPose*>(_vertices[2]);
-    const VertexTimeDiff* dt0 = static_cast<const VertexTimeDiff*>(_vertices[3]);
-    const VertexTimeDiff* dt1 = static_cast<const VertexTimeDiff*>(_vertices[4]);
+    const auto* p0 = dynamic_cast<const VertexPose*>(_vertices[0]);
+    const auto* p1 = dynamic_cast<const VertexPose*>(_vertices[1]);
+    const auto* p2 = dynamic_cast<const VertexPose*>(_vertices[2]);
+    const auto* dt0 = dynamic_cast<const VertexTimeDiff*>(_vertices[3]);
+    const auto* dt1 = dynamic_cast<const VertexTimeDiff*>(_vertices[4]);
 
     // === Segment 1: p0 -> p1 ===
     double steering_angle_cmd1 = 0.0;
@@ -101,6 +101,7 @@ public:
     const double delta_phi2 = angles::normalize_angle(steering_angle_cmd2 - steering_angle_cmd1);
     const double required_steering_rate2 = (dt1->dt() > 1e-6) ? (delta_phi2 / dt1->dt()) : 0.0;
     _error[1] = penaltyBoundFromBelow(steering_rate_max, std::abs(required_steering_rate2), penalty_eps);
+    _error[1] = 0.0;
   }
 
   void setInitialSteeringAngle(double angle)

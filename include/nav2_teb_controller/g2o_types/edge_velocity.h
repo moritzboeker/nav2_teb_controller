@@ -47,7 +47,7 @@ public:
   /**
    * @brief Actual cost function
    */  
-  void computeError()
+  void computeError() override
   {
     // read params
     const double v_max_x = params_->FollowPath.robot.v_max_x;
@@ -57,9 +57,9 @@ public:
     const bool exact_arc_length = params_->FollowPath.optimizer.exact_arc_length;
 
     // TEB_ASSERT_MSG(params_.FollowPath."You must call setTebConfig on EdgeVelocity()");
-    const VertexPose* conf1 = static_cast<const VertexPose*>(_vertices[0]);
-    const VertexPose* conf2 = static_cast<const VertexPose*>(_vertices[1]);
-    const VertexTimeDiff* deltaT = static_cast<const VertexTimeDiff*>(_vertices[2]);
+    const auto* conf1 = dynamic_cast<const VertexPose*>(_vertices[0]);
+    const auto* conf2 = dynamic_cast<const VertexPose*>(_vertices[1]);
+    const auto* deltaT = dynamic_cast<const VertexTimeDiff*>(_vertices[2]);
     
     const Eigen::Vector2d deltaS = conf2->estimate().position() - conf1->estimate().position();
     
@@ -158,7 +158,7 @@ public:
 #endif
  
   
-public:
+
   
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 

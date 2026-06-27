@@ -10,6 +10,7 @@
 #include <ostream>
 #include <tf2/utils.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+#include <utility>
 
 #include "nav2_teb_controller/math_utils.hpp"
 
@@ -27,7 +28,7 @@ public:
   PoseSE2(const PoseSE2 &) = default;
   PoseSE2(PoseSE2 &&) = default;
   PoseSE2(double x, double y, double th) : _position{x, y}, _theta{th} {}
-  PoseSE2(const Eigen::Vector2d &position, double th) : _position{position}, _theta{th} {}
+  PoseSE2(Eigen::Vector2d position, double th) : _position{std::move(position)}, _theta{th} {}
   // From messages
   explicit PoseSE2(const geometry_msgs::msg::Pose2D &pose)
       : _position{pose.x, pose.y}, _theta{pose.theta} {}
@@ -40,16 +41,16 @@ public:
 
   // Accessors
   Eigen::Vector2d &position() { return _position; }
-  const Eigen::Vector2d &position() const { return _position; }
+  [[nodiscard]] const Eigen::Vector2d &position() const { return _position; }
   double &x() { return _position.x(); }
-  const double &x() const { return _position.x(); }
+  [[nodiscard]] const double &x() const { return _position.x(); }
   double &y() { return _position.y(); }
-  const double &y() const { return _position.y(); }
+  [[nodiscard]] const double &y() const { return _position.y(); }
   double &theta() { return _theta; }
-  const double &theta() const { return _theta; }
+  [[nodiscard]] const double &theta() const { return _theta; }
 
   // Conversions
-  geometry_msgs::msg::Pose toPoseMsg() const {
+  [[nodiscard]] geometry_msgs::msg::Pose toPoseMsg() const {
     geometry_msgs::msg::Pose msg;
     msg.position.x = x();
     msg.position.y = y();
@@ -59,7 +60,7 @@ public:
     return msg;
   }
 
-  geometry_msgs::msg::Pose2D toPose2D() const {
+  [[nodiscard]] geometry_msgs::msg::Pose2D toPose2D() const {
     geometry_msgs::msg::Pose2D msg;
     msg.x = x();
     msg.y = y();
@@ -68,7 +69,7 @@ public:
   }
 
   // Utilities
-  Eigen::Vector2d orientationUnitVec() const {
+  [[nodiscard]] Eigen::Vector2d orientationUnitVec() const {
     return Eigen::Vector2d(std::cos(_theta), std::sin(_theta));
   }
 

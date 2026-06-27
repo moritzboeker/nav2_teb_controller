@@ -104,11 +104,11 @@ private:
   // Internal helpers
   // ──────────────────────────────────────────────
 
-  [[nodiscard]] inline size_t idx(unsigned x, unsigned y) const {
+  [[nodiscard]] size_t idx(unsigned x, unsigned y) const {
     return static_cast<size_t>(y) * nx_ + x;
   }
 
-  [[nodiscard]] inline bool inBounds(int x, int y) const {
+  [[nodiscard]] bool inBounds(int x, int y) const {
     return x >= 0 && y >= 0 && static_cast<unsigned>(x) < nx_ && static_cast<unsigned>(y) < ny_;
   }
 

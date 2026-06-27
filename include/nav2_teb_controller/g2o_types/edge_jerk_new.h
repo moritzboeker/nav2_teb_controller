@@ -58,7 +58,7 @@ public:
   /**
    * @brief Actual cost function
   */
-  void computeError()
+  void computeError() override
   {
     // read params
     const double jerk_max_x = params_->FollowPath.robot.jerk_max_x;
@@ -67,13 +67,13 @@ public:
     const bool exact_arc_length = params_->FollowPath.optimizer.exact_arc_length;
 
     // Get four poses and three deltaT
-    const VertexPose* pose1 = static_cast<const VertexPose*>(_vertices[0]);
-    const VertexPose* pose2 = static_cast<const VertexPose*>(_vertices[1]);
-    const VertexPose* pose3 = static_cast<const VertexPose*>(_vertices[2]);
-    const VertexPose* pose4 = static_cast<const VertexPose*>(_vertices[3]);
-    const VertexTimeDiff* dt1 = static_cast<const VertexTimeDiff*>(_vertices[4]);
-    const VertexTimeDiff* dt2 = static_cast<const VertexTimeDiff*>(_vertices[5]);
-    const VertexTimeDiff* dt3 = static_cast<const VertexTimeDiff*>(_vertices[6]);
+    const auto* pose1 = dynamic_cast<const VertexPose*>(_vertices[0]);
+    const auto* pose2 = dynamic_cast<const VertexPose*>(_vertices[1]);
+    const auto* pose3 = dynamic_cast<const VertexPose*>(_vertices[2]);
+    const auto* pose4 = dynamic_cast<const VertexPose*>(_vertices[3]);
+    const auto* dt1 = dynamic_cast<const VertexTimeDiff*>(_vertices[4]);
+    const auto* dt2 = dynamic_cast<const VertexTimeDiff*>(_vertices[5]);
+    const auto* dt3 = dynamic_cast<const VertexTimeDiff*>(_vertices[6]);
 
     // Using the difference quotient to calculate difference quotient
     const Eigen::Vector2d diff1 = pose2->position() - pose1->position();
@@ -145,7 +145,7 @@ public:
     _error[1] = penaltyBoundToInterval(jerk_rot, jerk_max_theta, penalty_eps);
   }
 
-public: 
+
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
     
@@ -177,14 +177,14 @@ public:
   */
   EdgeJerkStart()
   {
-    _measurement = NULL;
+    _measurement = nullptr;
     this->resize(5);
   }
     
   /**
    * @brief Actual cost function
   */
-  void computeError()
+  void computeError() override
   {
     // read params
     const double jerk_max_x = params_->FollowPath.robot.jerk_max_x;
@@ -193,11 +193,11 @@ public:
     const bool exact_arc_length = params_->FollowPath.optimizer.exact_arc_length;
 
     // Obtain pose and time difference information from vertices
-    const VertexPose* pose1 = static_cast<const VertexPose*>(_vertices[0]);
-    const VertexPose* pose2 = static_cast<const VertexPose*>(_vertices[1]);
-    const VertexPose* pose3 = static_cast<const VertexPose*>(_vertices[2]);
-    const VertexTimeDiff* dt1 = static_cast<const VertexTimeDiff*>(_vertices[3]);
-    const VertexTimeDiff* dt2 = static_cast<const VertexTimeDiff*>(_vertices[4]);
+    const auto* pose1 = dynamic_cast<const VertexPose*>(_vertices[0]);
+    const auto* pose2 = dynamic_cast<const VertexPose*>(_vertices[1]);
+    const auto* pose3 = dynamic_cast<const VertexPose*>(_vertices[2]);
+    const auto* dt1 = dynamic_cast<const VertexTimeDiff*>(_vertices[3]);
+    const auto* dt2 = dynamic_cast<const VertexTimeDiff*>(_vertices[4]);
 
     // Calculate the distance difference and angle difference between poses
     const Eigen::Vector2d diff1 = pose2->position() - pose1->position();
@@ -266,7 +266,7 @@ public:
     _measurement = &vel_start;
   }
   
-public:
+
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
     
@@ -298,14 +298,14 @@ public:
   */
   EdgeJerkGoal()
   {
-    _measurement = NULL;
+    _measurement = nullptr;
     this->resize(5);
   }
     
   /**
    * @brief Actual cost function
   */
-  void computeError()
+  void computeError() override
   {
     // read params
     const double jerk_max_x = params_->FollowPath.robot.jerk_max_x;
@@ -314,11 +314,11 @@ public:
     const bool exact_arc_length = params_->FollowPath.optimizer.exact_arc_length;
 
     // Obtain pose and time difference information from vertices
-    const VertexPose* pose1 = static_cast<const VertexPose*>(_vertices[0]);
-    const VertexPose* pose2 = static_cast<const VertexPose*>(_vertices[1]);
-    const VertexPose* pose_goal = static_cast<const VertexPose*>(_vertices[2]);
-    const VertexTimeDiff* dt1 = static_cast<const VertexTimeDiff*>(_vertices[3]);
-    const VertexTimeDiff* dt2 = static_cast<const VertexTimeDiff*>(_vertices[4]);
+    const auto* pose1 = dynamic_cast<const VertexPose*>(_vertices[0]);
+    const auto* pose2 = dynamic_cast<const VertexPose*>(_vertices[1]);
+    const auto* pose_goal = dynamic_cast<const VertexPose*>(_vertices[2]);
+    const auto* dt1 = dynamic_cast<const VertexTimeDiff*>(_vertices[3]);
+    const auto* dt2 = dynamic_cast<const VertexTimeDiff*>(_vertices[4]);
 
     // Calculate the distance difference and angle difference between poses
     const Eigen::Vector2d diff1 = pose2->position() - pose1->position();
@@ -387,7 +387,7 @@ public:
     _measurement = &vel_start;
   }
   
-public:
+
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 

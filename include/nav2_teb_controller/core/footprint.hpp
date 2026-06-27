@@ -66,7 +66,7 @@ public:
                                            const ObstacleMap2D &esdf, double d_min = 0.0) const {
     const double ct = std::cos(theta), st = std::sin(theta);
 
-    FootprintCheckResult result;
+    FootprintCheckResult result{};
     result.min_clearance = std::numeric_limits<double>::max();
     result.worst_circle = -1;
     result.is_colliding = false;
@@ -161,7 +161,7 @@ private:
 
   Model model_;
   std::vector<FootprintCircle> circles_;
-  bool use_local_costmap_;
+  bool use_local_costmap_{};
 };
 
 }  // namespace nav2_teb_controller

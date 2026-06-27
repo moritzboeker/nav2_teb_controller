@@ -1,5 +1,5 @@
 #ifndef _EDGE_KINEMATICS_CAR_LIKE_H
-#define _EDGE_KINEMATICS_CAR_LIKE_H
+#define EDGE_KINEMATICS_CAR_LIKE_H
 
 #include "nav2_teb_controller/g2o_types/vertex_pose.h"
 #include "nav2_teb_controller/g2o_types/penalties.h"
@@ -51,15 +51,15 @@ public:
   /**
    * @brief Actual cost function
    */    
-  void computeError()
+  void computeError() override
   {
     // read params
     const double turning_radius = params_->FollowPath.robot.min_turning_radius;
     const bool exact_arc_length = params_->FollowPath.optimizer.exact_arc_length;
     
     // TEB_ASSERT_MSG(cfg_, "You must call setTebConfig on EdgeKinematicsCarlike()");
-    const VertexPose* conf1 = static_cast<const VertexPose*>(_vertices[0]);
-    const VertexPose* conf2 = static_cast<const VertexPose*>(_vertices[1]);
+    const auto* conf1 = dynamic_cast<const VertexPose*>(_vertices[0]);
+    const auto* conf2 = dynamic_cast<const VertexPose*>(_vertices[1]);
     
     Eigen::Vector2d deltaS = conf2->position() - conf1->position();
 
@@ -79,7 +79,7 @@ public:
     // TEB_ASSERT_MSG(std::isfinite(_error[0]) && std::isfinite(_error[1]), "EdgeKinematicsCarlike::computeError() _error[0]=%f _error[1]=%f\n",_error[0],_error[1]);
   }
   
-public:
+
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW   
 };
 

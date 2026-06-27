@@ -33,7 +33,7 @@ public:
   /**
    * @brief Actual cost function
    */  
-  void computeError()
+  void computeError() override
   {
     // read params
     const double wheelbase = params_->FollowPath.robot.wheelbase;
@@ -41,9 +41,9 @@ public:
     const double penalty_eps = params_->FollowPath.optimizer.penalty_epsilon;
     const bool exact_arc_length = params_->FollowPath.optimizer.exact_arc_length;
 
-    const VertexPose* conf1 = static_cast<const VertexPose*>(_vertices[0]);
-    const VertexPose* conf2 = static_cast<const VertexPose*>(_vertices[1]);
-    const VertexTimeDiff* dt = static_cast<const VertexTimeDiff*>(_vertices[2]);
+    const auto* conf1 = dynamic_cast<const VertexPose*>(_vertices[0]);
+    const auto* conf2 = dynamic_cast<const VertexPose*>(_vertices[1]);
+    const auto* dt = dynamic_cast<const VertexTimeDiff*>(_vertices[2]);
 
     Eigen::Vector2d delta_s = conf2->estimate().position() - conf1->estimate().position();
     double dist = delta_s.norm();
@@ -69,7 +69,7 @@ public:
       _measurement = steering_angle;
   }
 
-public:
+
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 

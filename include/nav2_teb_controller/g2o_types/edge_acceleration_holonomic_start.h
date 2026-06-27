@@ -47,12 +47,12 @@ public:
   EdgeAccelerationHolonomicStart()
   {
     this->resize(3);
-    _measurement = NULL;
+    _measurement = nullptr;
   }
   /**
    * @brief Actual cost function
    */   
-  void computeError()
+  void computeError() override
   {
     // read params
     const double a_max_x = params_->FollowPath.robot.a_max_x;
@@ -61,9 +61,9 @@ public:
     const double penalty_eps = params_->FollowPath.optimizer.penalty_epsilon;
 
     // TEB_ASSERT_MSG(cfg_ && _measurement, "You must call setTebConfig() and setStartVelocity() on EdgeAccelerationStart()");
-    const VertexPose* pose1 = static_cast<const VertexPose*>(_vertices[0]);
-    const VertexPose* pose2 = static_cast<const VertexPose*>(_vertices[1]);
-    const VertexTimeDiff* dt = static_cast<const VertexTimeDiff*>(_vertices[2]);
+    const auto* pose1 = dynamic_cast<const VertexPose*>(_vertices[0]);
+    const auto* pose2 = dynamic_cast<const VertexPose*>(_vertices[1]);
+    const auto* dt = dynamic_cast<const VertexTimeDiff*>(_vertices[2]);
 
     // VELOCITY & ACCELERATION
     Eigen::Vector2d diff = pose2->position() - pose1->position();
@@ -106,7 +106,7 @@ public:
   {
     _measurement = &vel_start;
   }  
-public:       
+      
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };    
 

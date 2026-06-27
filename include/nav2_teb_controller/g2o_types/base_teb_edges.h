@@ -1,5 +1,5 @@
-#ifndef _BASE_TEB_EDGES_H_
-#define _BASE_TEB_EDGES_H_
+#ifndef BASE_TEB_EDGES_H_
+#define BASE_TEB_EDGES_H_
 
 #include <g2o/core/base_binary_edge.h>
 #include <g2o/core/base_unary_edge.h>
@@ -44,7 +44,7 @@ public:
   /**
    * @brief Read values from input stream
    */  	
-  virtual bool read(std::istream& /*is*/)
+  bool read(std::istream& /*is*/) override
   {
     // TODO generic read
     return true;
@@ -53,7 +53,7 @@ public:
   /**
    * @brief Write values to an output stream
    */    
-  virtual bool write(std::ostream& os) const
+  bool write(std::ostream& os) const override
   {
     // TODO generic write
     return os.good();
@@ -73,7 +73,7 @@ protected:
   using g2o::BaseUnaryEdge<D, E, VertexXi>::_error;
   using g2o::BaseUnaryEdge<D, E, VertexXi>::_vertices;
   
-  const teb_controller::Params* params_;//{nullptr}; //!< Store TebConfig class for parameters
+  const teb_controller::Params* params_{};//{nullptr}; //!< Store TebConfig class for parameters
   
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW   
@@ -113,7 +113,7 @@ public:
   /**
    * @brief Read values from input stream
    */  	
-  virtual bool read(std::istream& /*is*/)
+  bool read(std::istream& /*is*/) override
   {
     // TODO generic read
     return true;
@@ -122,7 +122,7 @@ public:
   /**
    * @brief Write values to an output stream
    */    
-  virtual bool write(std::ostream& os) const
+  bool write(std::ostream& os) const override
   {
     // TODO generic write
     return os.good();
@@ -142,7 +142,7 @@ protected:
   using g2o::BaseBinaryEdge<D, E, VertexXi, VertexXj>::_error;
   using g2o::BaseBinaryEdge<D, E, VertexXi, VertexXj>::_vertices;
     
-  const teb_controller::Params* params_;//{nullptr}; //!< Store TebConfig class for parameters
+  const teb_controller::Params* params_{};//{nullptr}; //!< Store TebConfig class for parameters
   
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW   
@@ -168,12 +168,12 @@ public:
   using g2o::BaseMultiEdge<D, E>::computeError;
     
   // Overwrites resize() from the parent class
-  virtual void resize(size_t size)
+  void resize(size_t size) override
   {
       g2o::BaseMultiEdge<D, E>::resize(size);
       
       for(std::size_t i=0; i<_vertices.size(); ++i)
-        _vertices[i] = NULL;
+        _vertices[i] = nullptr;
   }
 
   /**
@@ -191,7 +191,7 @@ public:
   /**
    * @brief Read values from input stream
    */  	
-  virtual bool read(std::istream& /*is*/)
+  bool read(std::istream& /*is*/) override
   {
     // TODO generic read
     return true;
@@ -200,7 +200,7 @@ public:
   /**
    * @brief Write values to an output stream
    */    
-  virtual bool write(std::ostream& os) const
+  bool write(std::ostream& os) const override
   {
     // TODO generic write
     return os.good();
@@ -220,7 +220,7 @@ protected:
   using g2o::BaseMultiEdge<D, E>::_error;
   using g2o::BaseMultiEdge<D, E>::_vertices;
   
-  const teb_controller::Params* params_;//{nullptr}; //!< Store TebConfig class for parameters
+  const teb_controller::Params* params_{};//{nullptr}; //!< Store TebConfig class for parameters
   
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW   

@@ -20,7 +20,7 @@ namespace nav2_teb_controller
 {
 struct Obstacle {
   std::vector<Eigen::Vector2d> polygon;
-  double radius;  // 0 für Punkt-Obstacles
+  double radius{};  // 0 für Punkt-Obstacles
 };
 
 class EdgeCostmapObstacle : public BaseTebUnaryEdge<2, std::nullptr_t, VertexPose>
@@ -28,7 +28,7 @@ class EdgeCostmapObstacle : public BaseTebUnaryEdge<2, std::nullptr_t, VertexPos
 public:
   void computeError() override
   {
-    const VertexPose* vp = static_cast<const VertexPose*>(_vertices[0]);
+    const auto* vp = dynamic_cast<const VertexPose*>(_vertices[0]);
     const double min_dist = params_->FollowPath.obstacles.min_obstacle_dist;
 	const double inflation_dist = params_->FollowPath.obstacles.inflation_dist;
     const double epsilon  = params_->FollowPath.optimizer.penalty_epsilon;
@@ -149,7 +149,7 @@ private:
 		return min_dist;
 	}
 
-	double distancePointToSegment(
+	static double distancePointToSegment(
 		const Eigen::Vector2d& p,
 		const Eigen::Vector2d& a,
 		const Eigen::Vector2d& b)
@@ -183,7 +183,7 @@ private:
 		return min_dist;
 	}
 
-	bool pointInPolygon(
+	static bool pointInPolygon(
 		double px, double py,const std::vector<geometry_msgs::msg::Point>& polygon)
 	{
 		bool inside = false;
@@ -198,7 +198,7 @@ private:
 		return inside;
 	}
 
-	bool pointInPolygon(
+	static bool pointInPolygon(
 		const Eigen::Vector2d& p,
 		const std::vector<Eigen::Vector2d>& poly)
 	{
@@ -215,7 +215,7 @@ private:
 		return inside;
 	}
 
-	double polygonToPolygonDistance(
+	static double polygonToPolygonDistance(
 	const std::vector<Eigen::Vector2d>& poly_a,  // Footprint
 	const std::vector<Eigen::Vector2d>& poly_b)  // Obstacle
 	{

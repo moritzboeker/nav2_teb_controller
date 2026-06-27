@@ -41,26 +41,26 @@ public:
              const ObstacleArray &obstacles, double inflation = 0.2);
 
   /** @brief Get all nodes */
-  const std::vector<VisibilityNode> &nodes() const { return nodes_; }
+  [[nodiscard]] const std::vector<VisibilityNode> &nodes() const { return nodes_; }
 
   /** @brief Get adjacency list for a node */
-  const std::vector<VisibilityEdge> &edges(int node_id) const { return adj_[node_id]; }
+  [[nodiscard]] const std::vector<VisibilityEdge> &edges(int node_id) const { return adj_[node_id]; }
 
-  int startId() const { return start_id_; }
-  int goalId() const { return goal_id_; }
-  bool empty() const { return nodes_.empty(); }
+  [[nodiscard]] int startId() const { return start_id_; }
+  [[nodiscard]] int goalId() const { return goal_id_; }
+  [[nodiscard]] bool empty() const { return nodes_.empty(); }
 
 private:
   /**
    * @brief Check if line p1→p2 is free of obstacle intersections
    */
-  bool isVisible(const Eigen::Vector2d &p1, const Eigen::Vector2d &p2,
+  [[nodiscard]] bool isVisible(const Eigen::Vector2d &p1, const Eigen::Vector2d &p2,
                  const ObstacleArray &obstacles, double inflation) const;
 
   /**
    * @brief Extract tangent keypoints around an obstacle polygon
    */
-  std::vector<Eigen::Vector2d> extractKeypoints(
+  [[nodiscard]] std::vector<Eigen::Vector2d> extractKeypoints(
       const costmap_converter_msgs::msg::ObstacleMsg &obs, double inflation) const;
 
   std::vector<VisibilityNode> nodes_;

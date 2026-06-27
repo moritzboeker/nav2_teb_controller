@@ -8,6 +8,7 @@ DiscreteTEBPlanner::DiscreteTEBPlanner(const teb_controller::Params &params,
     : params_(params)
     , footprint_(footprint)
     , costmap_ros_(costmap_ros)
+    , initialized_(true)
     , cost_(std::numeric_limits<double>::max()) {
   optimizer_ = initOptimizer();
   // obstacles_ = obstacles; // implement later
@@ -16,8 +17,6 @@ DiscreteTEBPlanner::DiscreteTEBPlanner(const teb_controller::Params &params,
 
   vel_start_ = {false, geometry_msgs::msg::Twist()};
   vel_goal_ = {false, geometry_msgs::msg::Twist()};
-
-  initialized_ = true;
 }
 
 std::shared_ptr<g2o::SparseOptimizer> DiscreteTEBPlanner::initOptimizer() {
@@ -500,8 +499,7 @@ void DiscreteTEBPlanner::computeCurrentCost() {
   double total_cost = 0.0;
   std::map<std::string, double> edge_type_costs;
 
-  for (auto it = optimizer_->activeEdges().begin(); it != optimizer_->activeEdges().end(); ++it) {
-    g2o::OptimizableGraph::Edge *edge = *it;
+  for (auto edge : optimizer_->activeEdges()) {
     edge->computeError();
     double cur_cost = edge->chi2();
     total_cost += cur_cost;
@@ -650,7 +648,7 @@ void DiscreteTEBPlanner::AddEdgesAcceleration() {
 
     // check if an initial velocity should be taken into accound
     if (vel_start_.first) {
-      EdgeAccelerationStart *acceleration_edge = new EdgeAccelerationStart;
+      auto *acceleration_edge = new EdgeAccelerationStart;
       acceleration_edge->setVertex(0, pose_vertices_[0]);
       acceleration_edge->setVertex(1, pose_vertices_[1]);
       acceleration_edge->setVertex(2, timediff_vertices_[0]);
@@ -662,7 +660,7 @@ void DiscreteTEBPlanner::AddEdgesAcceleration() {
 
     // now add the usual acceleration edge for each tuple of three teb poses
     for (int i = 0; i < n - 2; ++i) {
-      EdgeAcceleration *acceleration_edge = new EdgeAcceleration;
+      auto *acceleration_edge = new EdgeAcceleration;
       acceleration_edge->setVertex(0, pose_vertices_[i]);
       acceleration_edge->setVertex(1, pose_vertices_[i + 1]);
       acceleration_edge->setVertex(2, pose_vertices_[i + 2]);
@@ -675,7 +673,7 @@ void DiscreteTEBPlanner::AddEdgesAcceleration() {
 
     // check if a goal velocity should be taken into accound
     if (vel_goal_.first) {
-      EdgeAccelerationGoal *acceleration_edge = new EdgeAccelerationGoal;
+      auto *acceleration_edge = new EdgeAccelerationGoal;
       acceleration_edge->setVertex(0, pose_vertices_[n - 2]);
       acceleration_edge->setVertex(1, pose_vertices_[n - 1]);
       acceleration_edge->setVertex(2, timediff_vertices_[teb_.sizeTimeDiffs() - 1]);
@@ -697,7 +695,7 @@ void DiscreteTEBPlanner::AddEdgesAcceleration() {
     information(2, 2) = weight_theta;
     // check if an initial velocity should be taken into accound
     if (vel_start_.first) {
-      EdgeAccelerationHolonomicStart *acceleration_edge = new EdgeAccelerationHolonomicStart;
+      auto *acceleration_edge = new EdgeAccelerationHolonomicStart;
       acceleration_edge->setVertex(0, pose_vertices_[0]);
       acceleration_edge->setVertex(1, pose_vertices_[1]);
       acceleration_edge->setVertex(2, timediff_vertices_[0]);
@@ -708,7 +706,7 @@ void DiscreteTEBPlanner::AddEdgesAcceleration() {
     }
     // now add the usual acceleration edge for each tuple of three teb poses
     for (int i = 0; i < n - 2; ++i) {
-      EdgeAccelerationHolonomic *acceleration_edge = new EdgeAccelerationHolonomic;
+      auto *acceleration_edge = new EdgeAccelerationHolonomic;
       acceleration_edge->setVertex(0, pose_vertices_[i]);
       acceleration_edge->setVertex(1, pose_vertices_[i + 1]);
       acceleration_edge->setVertex(2, pose_vertices_[i + 2]);
@@ -720,7 +718,7 @@ void DiscreteTEBPlanner::AddEdgesAcceleration() {
     }
     // check if a goal velocity should be taken into accound
     if (vel_goal_.first) {
-      EdgeAccelerationHolonomicGoal *acceleration_edge = new EdgeAccelerationHolonomicGoal;
+      auto *acceleration_edge = new EdgeAccelerationHolonomicGoal;
       acceleration_edge->setVertex(0, pose_vertices_[n - 2]);
       acceleration_edge->setVertex(1, pose_vertices_[n - 1]);
       acceleration_edge->setVertex(2, timediff_vertices_[teb_.sizeTimeDiffs() - 1]);
@@ -752,7 +750,7 @@ void DiscreteTEBPlanner::AddEdgesJerk() {
 
   // check if an initial velocity should be taken into accound
   if (vel_start_.first) {
-    EdgeJerkStart *jerk_edge = new EdgeJerkStart;
+    auto *jerk_edge = new EdgeJerkStart;
     jerk_edge->setVertex(0, pose_vertices_[0]);
     jerk_edge->setVertex(1, pose_vertices_[1]);
     jerk_edge->setVertex(2, pose_vertices_[2]);
@@ -765,7 +763,7 @@ void DiscreteTEBPlanner::AddEdgesJerk() {
   }
   // now add the usual jerk edge for each tuple of three teb poses
   for (int i = 0; i < n - 3; ++i) {
-    EdgeJerk *jerk_edge = new EdgeJerk;
+    auto *jerk_edge = new EdgeJerk;
     jerk_edge->setVertex(0, pose_vertices_[i]);
     jerk_edge->setVertex(1, pose_vertices_[i + 1]);
     jerk_edge->setVertex(2, pose_vertices_[i + 2]);
@@ -779,7 +777,7 @@ void DiscreteTEBPlanner::AddEdgesJerk() {
   }
   // check if a goal velocity should be taken into accound
   if (vel_goal_.first) {
-    EdgeJerkGoal *jerk_edge = new EdgeJerkGoal;
+    auto *jerk_edge = new EdgeJerkGoal;
     jerk_edge->setVertex(0, pose_vertices_[n - 3]);
     jerk_edge->setVertex(1, pose_vertices_[n - 2]);
     jerk_edge->setVertex(2, pose_vertices_[n - 1]);
@@ -806,7 +804,7 @@ void DiscreteTEBPlanner::AddEdgesSteeringRate() {
   // check if an initial velocity should be taken into accound (we apply the same for the steering
   // rate)
   if (vel_start_.first) {
-    EdgeSteeringRateStart *steering_rate_edge = new EdgeSteeringRateStart;
+    auto *steering_rate_edge = new EdgeSteeringRateStart;
     steering_rate_edge->setVertex(0, pose_vertices_[0]);
     steering_rate_edge->setVertex(1, pose_vertices_[1]);
     steering_rate_edge->setVertex(2, timediff_vertices_[0]);
@@ -817,7 +815,7 @@ void DiscreteTEBPlanner::AddEdgesSteeringRate() {
   }
   for (int i = 0; i < n - 2; i++)  // ignore twiced start only
   {
-    EdgeSteeringRate *steering_rate_edge = new EdgeSteeringRate;
+    auto *steering_rate_edge = new EdgeSteeringRate;
     steering_rate_edge->setVertex(0, pose_vertices_[i]);
     steering_rate_edge->setVertex(1, pose_vertices_[i + 1]);
     steering_rate_edge->setVertex(2, pose_vertices_[i + 2]);
@@ -830,7 +828,7 @@ void DiscreteTEBPlanner::AddEdgesSteeringRate() {
   // check if a goal velocity should be taken into accound (we apply the same for the steering
   // rate)
   if (vel_goal_.first) {
-    EdgeSteeringRateGoal *steering_rate_edge = new EdgeSteeringRateGoal;
+    auto *steering_rate_edge = new EdgeSteeringRateGoal;
     steering_rate_edge->setVertex(0, pose_vertices_[n - 2]);
     steering_rate_edge->setVertex(1, pose_vertices_[n - 1]);
     steering_rate_edge->setVertex(2, timediff_vertices_[teb_.sizeTimeDiffs() - 1]);
@@ -854,7 +852,7 @@ void DiscreteTEBPlanner::AddEdgesStartSteeringAngle() {
   // Create the information matrix (weight).
   // Since our error is 2D, the information matrix is 2x2.
   Eigen::Matrix<double, 2, 2> information = Eigen::Matrix<double, 2, 2>::Identity() * weight;
-  EdgeStartSteeringAngle *start_edge = new EdgeStartSteeringAngle();
+  auto *start_edge = new EdgeStartSteeringAngle();
   start_edge->setVertex(0, pose_vertices_[0]);
   start_edge->setVertex(1, pose_vertices_[1]);
   start_edge->setVertex(2, pose_vertices_[2]);
@@ -912,7 +910,7 @@ void DiscreteTEBPlanner::AddEdgesObstacles() {
       if (rough_dist > cutoff)
         continue;  // zu weit weg → skip
 
-      EdgeCostmapObstacle *e = new EdgeCostmapObstacle();
+      auto *e = new EdgeCostmapObstacle();
       e->setVertex(0, pose_vertices_[i]);
       e->setObstacle(obs);
       e->setFootprint(raw_fp);

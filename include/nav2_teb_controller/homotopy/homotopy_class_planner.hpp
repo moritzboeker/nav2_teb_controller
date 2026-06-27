@@ -42,10 +42,10 @@ public:
   void clear() override;
 
   // ── PlannerInterface<TEB> ─────────────────────────────────────────────
-  const TimedElasticBand &getTEB() const override;
-  void setFeedback(const ackermann_msgs::msg::AckermannDrive &) override;
+  [[nodiscard]] const TimedElasticBand &getTEB() const override;
+  void setFeedback(const ackermann_msgs::msg::AckermannDrive & /*feedback*/) override;
   void updateObstacleContainer(
-      costmap_converter_msgs::msg::ObstacleArrayMsg::ConstSharedPtr) override;
+      costmap_converter_msgs::msg::ObstacleArrayMsg::ConstSharedPtr /*obstacle_array*/) override;
   void setObstacleMap(const ObstacleMap2D *esdf) override;
   void setFixedGoal(bool fix) override;
 
@@ -58,10 +58,10 @@ public:
   void setBasePlanner(std::shared_ptr<PlannerInterface<TimedElasticBand>> base_planner);
 
   /** @brief Get all TEB candidates (for visualization) */
-  const std::vector<TebCandidate::Ptr> &getCandidates() const { return candidates_; }
+  [[nodiscard]] const std::vector<TebCandidate::Ptr> &getCandidates() const { return candidates_; }
 
   /** @brief Get best TEB candidate */
-  const TebCandidate &getBestCandidate() const;
+  [[nodiscard]] const TebCandidate &getBestCandidate() const;
 
 private:
   /**
@@ -79,7 +79,7 @@ private:
   /**
    * @brief Step 3: Select best feasible TEB by cost
    */
-  int selectBestCandidate() const;
+  [[nodiscard]] int selectBestCandidate() const;
 
   /**
    * @brief Update existing candidates (warm-start) or init new ones

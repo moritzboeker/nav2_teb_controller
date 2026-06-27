@@ -28,25 +28,25 @@ private:
    * @brief Dijkstra on visibility graph
    * @return Node-ID path from start to goal, empty if no path
    */
-  std::vector<int> dijkstra(const VisibilityGraph &graph, int start_id, int goal_id) const;
+  [[nodiscard]] static std::vector<int> dijkstra(const VisibilityGraph &graph, int start_id, int goal_id) ;
 
   /**
    * @brief Yen's K-Shortest Paths for alternative homotopy classes
    */
-  std::vector<std::vector<int>> yenKShortestPaths(const VisibilityGraph &graph, int start_id,
-                                                  int goal_id, int k) const;
+  [[nodiscard]] static std::vector<std::vector<int>> yenKShortestPaths(const VisibilityGraph &graph, int start_id,
+                                                  int goal_id, int k) ;
 
   /**
    * @brief Convert node-ID path to PoseSE2 path
    */
-  std::vector<PoseSE2> nodePathToPoses(const VisibilityGraph &graph,
-                                       const std::vector<int> &node_path) const;
+  [[nodiscard]] static std::vector<PoseSE2> nodePathToPoses(const VisibilityGraph &graph,
+                                       const std::vector<int> &node_path) ;
 
   /**
    * @brief Remove paths with duplicate H-signatures
    */
-  void filterDuplicateClasses(std::vector<GraphSearchResult> &results,
-                              double h_sig_tolerance = 1e-3) const;
+  static void filterDuplicateClasses(std::vector<GraphSearchResult> &results,
+                              double h_sig_tolerance = 1e-3) ;
 
   double inflation_radius_;
   double robot_radius_;

@@ -81,21 +81,21 @@ public:
 
   void clear() override;
 
-  const TimedElasticBand &getTEB() const override { return teb_; }
+  [[nodiscard]] const TimedElasticBand &getTEB() const override { return teb_; }
 
   void setFeedback(const ackermann_msgs::msg::AckermannDrive &feedback) override {
     ackermann_feedback_ = feedback;
   }
 
   void updateObstacleContainer(
-      costmap_converter_msgs::msg::ObstacleArrayMsg::ConstSharedPtr obstacle_array = nullptr);
+      costmap_converter_msgs::msg::ObstacleArrayMsg::ConstSharedPtr obstacle_array = nullptr) override;
 
   void setObstacleMap(const ObstacleMap2D *esdf) override { esdf_ = esdf; }
 
   void setFixedGoal(bool fix) override { final_goal_ = fix; }
 
   bool optimizeTEB(int no_inner_iterations, int no_outer_iterations, bool compute_cost_afterwards);
-  bool isOptimized() { return optimized_; }
+  bool isOptimized() const { return optimized_; }
 
   void computeCurrentCost();
 
@@ -135,8 +135,8 @@ protected:
                        Args &&...args);
 
   // remove later in extra class
-  geometry_msgs::msg::Twist extractVelocity() const;
-  geometry_msgs::msg::Twist getVelocityCommand() const;
+  [[nodiscard]] geometry_msgs::msg::Twist extractVelocity() const;
+  [[nodiscard]] geometry_msgs::msg::Twist getVelocityCommand() const;
 
   // Velocity
   void setVelocityStart(const geometry_msgs::msg::Twist &vel_start) {
@@ -150,8 +150,8 @@ protected:
   void setGoal(const geometry_msgs::msg::Pose &goal) { goal_ = goal; }
 
   // implement later for collision checks
-  bool isTrajectoryFeasible() { return true; }
-  bool isPoseValid() { return true; }
+  static bool isTrajectoryFeasible() { return true; }
+  static bool isPoseValid() { return true; }
 
   TimedElasticBand teb_;
   const teb_controller::Params &params_;
@@ -171,7 +171,7 @@ protected:
       vel_goal_;  //!< Store the final velocity at the goal pose
   ackermann_msgs::msg::AckermannDrive ackermann_feedback_;
   geometry_msgs::msg::Pose goal_;
-  bool final_goal_;
+  bool final_goal_{};
 
   bool initialized_ = false;
   bool optimized_ = false;

@@ -42,10 +42,10 @@ public:
   /**
    * @brief Actual cost function
    */
-  void computeError()
+  void computeError() override
   {
     // TEB_ASSERT_MSG(cfg_, "You must call setTebConfig on EdgeTimeOptimal()");
-    const VertexTimeDiff* timediff = static_cast<const VertexTimeDiff*>(_vertices[0]);
+    const auto* timediff = dynamic_cast<const VertexTimeDiff*>(_vertices[0]);
 
    _error[0] = timediff->dt();
   
@@ -64,7 +64,7 @@ public:
 #endif
   
   
-public:        
+       
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 

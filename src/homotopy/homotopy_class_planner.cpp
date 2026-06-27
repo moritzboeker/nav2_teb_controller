@@ -5,7 +5,7 @@ namespace nav2_teb_controller {
 HomotopyClassPlanner::HomotopyClassPlanner(const teb_controller::Params &params,
                                            const Footprint &footprint,
                                            nav2_costmap_2d::Costmap2DROS *costmap_ros)
-    : params_(params), footprint_(footprint), costmap_ros_(costmap_ros), best_candidate_idx_(-1) {
+    : params_(params), footprint_(footprint), costmap_ros_(costmap_ros) {
   RCLCPP_INFO(rclcpp::get_logger("HomotopyClassPlanner"), "HomotopyClassPlanner constructed.");
 }
 
