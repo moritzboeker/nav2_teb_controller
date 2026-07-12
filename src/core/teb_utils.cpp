@@ -132,7 +132,7 @@ void autoResize(TimedElasticBand &teb, double dt_ref, double dt_hysteresis, doub
 }
 
 void updateAndPrune(TimedElasticBand &teb, const PoseSE2 &new_start, const PoseSE2 &new_goal,
-                    int min_samples) {
+                    int min_samples, double min_prune_distance) {
   if (teb.sizePoses() == 0) {
     return;
   }
@@ -159,7 +159,7 @@ void updateAndPrune(TimedElasticBand &teb, const PoseSE2 &new_start, const PoseS
   // Bei hartem Rückwärts-/Quer-Versatz kann P1 sehr dicht an P0 kleben.
   if (teb.sizePoses() > 1) {
     const double dist_p1 = (teb.pose(1).position() - new_start.position()).norm();
-    const double min_dist_p1 = 0.02;  // z.B. 2-5cm, als Parameter konfigurierbar
+    const double min_dist_p1 = min_prune_distance;  // z.B. 2-5cm, als Parameter konfigurierbar
 
     if (dist_p1<min_dist_p1 &&static_cast<int>(teb.sizePoses())> min_samples) {
       teb.deletePoses(1, 1);

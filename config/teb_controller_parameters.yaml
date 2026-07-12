@@ -66,6 +66,9 @@ teb_controller:
       control_min_look_ahead_time:
         type: double
         default_value: 0.0
+      min_prune_distance:
+        type: double
+        default_value: 0.0
 
     robot:
       footprint:

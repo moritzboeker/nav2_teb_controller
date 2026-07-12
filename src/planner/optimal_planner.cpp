@@ -88,6 +88,7 @@ bool DiscreteTEBPlanner::plan(const nav_msgs::msg::Path &initial_plan,
   double v_max_theta = params_.FollowPath.robot.v_max_theta;
   double reinit_dist = params_.FollowPath.trajectory.reinit_dist;
   double reinit_angle = params_.FollowPath.trajectory.reinit_angle;
+  double min_prune_distance = params_.FollowPath.trajectory.min_prune_distance;
   int min_samples = params_.FollowPath.trajectory.min_samples;
   int no_inner_iterations = params_.FollowPath.optimizer.no_inner_iterations;
   int no_outer_iterations = params_.FollowPath.optimizer.no_outer_iterations;
@@ -112,7 +113,7 @@ bool DiscreteTEBPlanner::plan(const nav_msgs::msg::Path &initial_plan,
     const bool goal_changed = dist_to_goal > reinit_dist || angle_to_goal > reinit_angle;
 
     if (teb_.sizePoses() > 0 && !goal_changed)
-      updateAndPrune(teb_, start, goal, min_samples);  // actual warm start
+      updateAndPrune(teb_, start, goal, min_samples, min_prune_distance);  // actual warm start
     else {
       // Goal too far away → reinit
       RCLCPP_INFO(rclcpp::get_logger("optimal_planner"),
@@ -170,7 +171,7 @@ bool DiscreteTEBPlanner::optimizeTEB(int no_inner_iterations, int no_outer_itera
   }
 
   for (int i = 0; i < no_outer_iterations; ++i) {
-    success = optimizeGraph(no_inner_iterations, true);
+    success = optimizeGraph(no_inner_iterations, false);
     if (!success) {
       RCLCPP_INFO(rclcpp::get_logger("optimal_planner"), "Optimizing graph failed.");
       clearGraph();

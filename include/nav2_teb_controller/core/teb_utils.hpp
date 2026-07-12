@@ -29,7 +29,7 @@ void autoResize(TimedElasticBand &teb, double dt_ref, double dt_hysteresis, doub
                 bool fast_mode);
 
 void updateAndPrune(TimedElasticBand &teb, const PoseSE2 &new_start, const PoseSE2 &new_goal,
-                    int min_samples);
+                    int min_samples, double min_prune_distance);
 
 geometry_msgs::msg::Twist extractVelocity(const PoseSE2 &pose1, const PoseSE2 &pose2, double dt,
                                           bool holonomic);
