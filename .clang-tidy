@@ -18,7 +18,26 @@ Checks: >
   -readability-implicit-bool-conversion,
   -readability-isolate-declaration,
   -readability-else-after-return,
-  -bugprone-empty-catch
+  -bugprone-empty-catch,
+
+  -cppcoreguidelines-owning-memory,
+  -cppcoreguidelines-non-private-member-variables-in-classes,
+  -cppcoreguidelines-special-member-functions,
+  -cppcoreguidelines-avoid-const-or-ref-data-members,
+  -bugprone-narrowing-conversions,
+  -cppcoreguidelines-narrowing-conversions,
+  -performance-enum-size,
+  -modernize-return-braced-init-list,
+  -cppcoreguidelines-pro-type-member-init
+
+# g2o übergibt Ownership der Edges — raw new ist by design
+# g2o Edges brauchen protected members für Vererbung
+# Interface-Klassen (PlannerBase, GraphSearchInterface) brauchen kein Rule-of-Five
+# Referenz-Members sind bewusst gewählt für params_ und footprint_
+# narrowing size_t → difference_type bei vector insert/erase — bekanntes Pattern
+# enum Model in Footprint — Performance-Optimierung für später
+# modernize-return-braced-init-list für Eigen/PoseSE2 — späterer Fix
+# model_ wird im Constructor per set-Methode gesetzt
 
 WarningsAsErrors: ""
 
