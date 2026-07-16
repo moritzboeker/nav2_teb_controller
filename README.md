@@ -1,55 +1,56 @@
 # nav2_teb_controller
 
-A modern C++ reimplementation of the **Timed Elastic Band (TEB)** local planner, redesigned for the [Nav2](https://nav2.ros.org/) navigation stack on **ROS2**.
+A modern C++20 reimplementation of the **Timed Elastic Band (TEB)** local planner for [Nav2](https://nav2.ros.org/) (ROS 2 Jazzy+). Uses polynomial (cubic Hermite) trajectory segments optimized via `libg2o` sparse nonlinear least-squares, supporting differential drive, Ackermann/bicycle, and tricycle kinematic models.
 
-This package is based on the original [`teb_local_planner`](https://github.com/rst-tu-dortmund/teb_local_planner) by [RST – TU Dortmund](https://github.com/rst-tu-dortmund), adapted and extended for modern ROS2 standards, improved optimization backends, and enhanced kinodynamic constraint handling.
+Based on the original [`teb_local_planner`](https://github.com/rst-tu-dortmund/teb_local_planner) by RST – TU Dortmund, redesigned for ROS 2 with improved optimization, ESDF-based obstacle avoidance, and homotopy class planning.
 
-***
+## Features
 
-## ✨ Features
+- **Trajectory optimization via g2o** — Gauss-Newton or Levenberg-Marquardt with 4 solver backends (eigen, cholmod, csparse, dense)
+- **31 custom g2o edge types** — velocity, acceleration, jerk, snap, kinematics (diff-drive + car-like), steering rate, time-optimal, shortest-path, path smoothness, G³ continuity, ESDF obstacles, etc.
+- **ESDF obstacle avoidance** — Meijster O(n) Euclidean Distance Transform with bilinear interpolation and analytical gradients
+- **Footprint-aware collision checking** — circle model, polygon-to-circles decomposition
+- **Homotopy Class Planning** (stub) — visibility graph search with H-signature filtering for multi-topology planning
+- **Robot models** — differential drive, Ackermann/bicycle, holonomic
+- **Dynamic parameter reconfiguration** via `generate_parameter_library`
+- **RViz visualization** — 7 topics: local plan, lookahead, poses, obstacles, curvature radii, footprint
 
-- Full ROS2 / Nav2 integration as a pluginlib-based local planner controller
-- Trajectory optimization using the **g2o** sparse nonlinear least-squares framework
-- Support for differential drive, bicycle, and tricycle kinematic models
-- Dynamic obstacle avoidance with configurable inflation and costmap integration
-- Improved code structure following modern C++17/20 practices
-- Drop-in replacement for the classic `teb_local_planner` in ROS2 environments
+## Status
 
-***
+| Component | Status |
+|-----------|--------|
+| TEBController plugin (lifecycle) | ✅ Complete |
+| Trajectory optimization (g2o) | ✅ Complete |
+| ESDF (Meijster EDT) | ✅ Complete |
+| Footprint collision check | ✅ Complete |
+| TEB utilities (init, resize, prune, velocity) | ✅ Complete |
+| Velocity saturation (Twist + Ackermann) | ✅ Complete |
+| All 31 g2o edge/vertex types | ✅ Complete |
+| Generic edge template (`addEdgesGeneric`) | ✅ Complete |
+| Parameter library | ✅ Complete |
+| Visualization (7 RViz topics) | ✅ Complete |
+| Unit tests (gtest) | ✅ Complete |
+| HomotopyClassPlanner::plan() | 🚧 Stub |
+| VisibilityGraphSearch::search() | 🚧 Stub |
+| VisibilityGraph::build() | 🚧 Stub |
+| HSignature::compute() | 🚧 Stub |
+| EdgeViaPoints | 🚧 Not wired |
+| Integration tests | 🚧 Empty |
 
-## 📦 Dependencies
-
-- ROS2 (Humble or newer)
-- Nav2 (`nav2_core`, `nav2_costmap_2d`, `nav2_util`)
-- `g2o` — graph optimization framework
-- `Eigen3`
-- `pluginlib`
-
-***
-
-## 🚀 Build & Install
+## Quick Start
 
 ```bash
-# Clone into your ROS2 workspace
 cd ~/ros2_ws/src
-git clone https://github.com/danielyousef/nav2_teb_controller.git
-
-# Install dependencies
+git clone <this-repo>
 cd ~/ros2_ws
 rosdep install --from-paths src --ignore-src -r -y
-
-# Build
 colcon build --packages-select nav2_teb_controller
-
-# Source
 source install/setup.bash
 ```
 
-***
+## Configuration
 
-## ⚙️ Configuration
-
-Add the controller plugin to your Nav2 params file:
+Add to Nav2 params:
 
 ```yaml
 controller_server:
@@ -59,39 +60,22 @@ controller_server:
       plugin: "nav2_teb_controller::TEBController"
 ```
 
-For a full list of configurable parameters, refer to the [parameter documentation](docs/parameters.md).
+See `config/teb_controller_params.yaml` for full parameter reference.
 
-***
+## Tests
 
-## 🎥 Demo Videos
+```bash
+make test                    # all tests
+colcon test --packages-select nav2_teb_controller \
+  --event-handlers console_direct+ \
+  --ctest-args -R test_edge_time_optimal  # single test
+```
 
-| Video | Link |
-|-------|------|
-| Demo 1 | [▶ Watch on YouTube](https://www.youtube.com/watch?v=3201fSL2xvI) |
-| Demo 2 | [▶ Watch on YouTube](https://www.youtube.com/watch?v=a3creSJZxis) |
-| Demo 3 | [▶ Watch on YouTube](https://www.youtube.com/watch?v=BqfFwOXZO0k) |
+## References
 
-***
+- C. Rösmann, W. Feiten, T. Wösch, F. Hoffmann, T. Bertram: *Trajectory modification considering dynamic constraints of autonomous robots*, ROBOTIK 2012.
+- C. Rösmann, F. Hoffmann, T. Bertram: *Integrated online trajectory planning and optimization in distinctive topologies*, RAS 2017.
 
-## 📚 Original Work & References
+## License
 
-This package is derived from and inspired by:
-
-- **teb_local_planner** — [github.com/rst-tu-dortmund/teb_local_planner](https://github.com/rst-tu-dortmund/teb_local_planner)
-  - C. Rösmann, W. Feiten, T. Wösch, F. Hoffmann, T. Bertram: *Trajectory modification considering dynamic constraints of autonomous robots*, ROBOTIK 2012.
-  - C. Rösmann, F. Hoffmann, T. Bertram: *Integrated online trajectory planning and optimization in distinctive topologies*, Robotics and Autonomous Systems, 2017.
-
-***
-
-## 📄 License
-
-This project is licensed under the **BSD 3-Clause License** — see [LICENSE](LICENSE) for details.
-
-The original `teb_local_planner` is also licensed under BSD 3-Clause.
-
-***
-
-## 🙋 Author
-
-**Daniel Yousef**
-[GitHub](https://github.com/danielyousef)
+BSD 3-Clause. See LICENSE.

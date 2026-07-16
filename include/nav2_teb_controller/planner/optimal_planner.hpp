@@ -61,6 +61,12 @@
 
 namespace nav2_teb_controller {
 
+enum class OptimizationPhase {
+  Obstacles = 0,
+  Kinodynamics = 1,
+  Full = 2
+};
+
 struct EdgeDescriptor {
   int num_poses;      // Anzahl Pose-Vertices
   int num_timediffs;  // Anzahl TimeDiff-Vertices
@@ -101,7 +107,9 @@ public:
 
 protected:
   std::shared_ptr<g2o::SparseOptimizer> initOptimizer();
-  bool buildGraph();
+  bool runPhase(int no_inner_iterations, int no_outer_iterations, bool compute_cost_afterwards,
+                OptimizationPhase phase);
+  bool buildGraph(OptimizationPhase phase);
   bool optimizeGraph(int no_inner_iterations, bool clear_after);
   void clearGraph();
   void writeBackOptimizedValues();

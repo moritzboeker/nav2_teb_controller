@@ -88,6 +88,7 @@ controller_server:
         fix_goal: true
         free_goal_vel: false
         verbose: false
+        stepwise_optimization: true
         divergence_detection_enable: true
         divergence_detection_max_chi_squared: 10
         divergence_detection_max_chi_violation_rate: 0.5

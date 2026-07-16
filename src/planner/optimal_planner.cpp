@@ -1,5 +1,7 @@
 #include "nav2_teb_controller/planner/optimal_planner.hpp"
 
+#include <algorithm>
+
 namespace nav2_teb_controller {
 
 DiscreteTEBPlanner::DiscreteTEBPlanner(const teb_controller::Params &params,
@@ -142,12 +144,54 @@ bool DiscreteTEBPlanner::optimizeTEB(int no_inner_iterations, int no_outer_itera
   if (!params_.FollowPath.optimizer.activate)
     return false;
 
-  bool success = false;
   weight_multiplier_ = 1.0;
-  double chi2_old_ = INFINITY;
   optimized_ = false;
 
-  // read params
+  if (params_.FollowPath.optimizer.stepwise_optimization) {
+    int inner_per_phase = std::max(1, no_inner_iterations / 3);
+    int outer_per_phase = std::max(1, no_outer_iterations / 3);
+    int inner_last = no_inner_iterations - 2 * inner_per_phase;
+    int outer_last = no_outer_iterations - 2 * outer_per_phase;
+
+    // Phase 1: Obstacles + base kinematics (G3, diffdrive/carlike)
+    if (!runPhase(inner_per_phase, outer_per_phase, false, OptimizationPhase::Obstacles)) {
+      RCLCPP_INFO(rclcpp::get_logger("optimal_planner"),
+                  "DiscreteTEBPlanner: Obstacle phase failed.");
+      return false;
+    }
+
+    // Phase 2: Kinodynamics — add velocity, acceleration, jerk, steering
+    if (!runPhase(inner_per_phase, outer_per_phase, false, OptimizationPhase::Kinodynamics)) {
+      RCLCPP_INFO(rclcpp::get_logger("optimal_planner"),
+                  "DiscreteTEBPlanner: Kinodynamics phase failed.");
+      return false;
+    }
+
+    // Phase 3: Full — add efficiency edges (time optimal, shortest path, smoothness)
+    if (!runPhase(inner_last, outer_last, compute_cost_afterwards, OptimizationPhase::Full)) {
+      RCLCPP_INFO(rclcpp::get_logger("optimal_planner"),
+                  "DiscreteTEBPlanner: Full optimization phase failed.");
+      return false;
+    }
+  } else {
+    // Legacy single-phase mode
+    if (!runPhase(no_inner_iterations, no_outer_iterations, compute_cost_afterwards,
+                  OptimizationPhase::Full)) {
+      RCLCPP_INFO(rclcpp::get_logger("optimal_planner"),
+                  "DiscreteTEBPlanner: Optimization failed.");
+      return false;
+    }
+  }
+
+  RCLCPP_DEBUG(rclcpp::get_logger("optimal_planner"), "DiscreteTEBPlanner: TEB optimized.");
+  return true;
+}
+
+bool DiscreteTEBPlanner::runPhase(int no_inner_iterations, int no_outer_iterations,
+                                  bool compute_cost_afterwards, OptimizationPhase phase) {
+  bool success = false;
+  double chi2_old_ = INFINITY;
+
   bool fast_mode = params_.FollowPath.optimizer.fast_mode;
   bool auto_resize = params_.FollowPath.trajectory.auto_resize;
   double dt_ref = params_.FollowPath.trajectory.dt_ref;
@@ -163,9 +207,10 @@ bool DiscreteTEBPlanner::optimizeTEB(int no_inner_iterations, int no_outer_itera
     autoResize(teb_, dt_ref, dt_hyst, min_seg_length, max_seg_length, max_angle_diff, min_samples,
                max_samples, fast_mode);
 
-  success = buildGraph();
+  success = buildGraph(phase);
   if (!success) {
-    RCLCPP_INFO(rclcpp::get_logger("optimal_planner"), "Building graph failed.");
+    RCLCPP_INFO(rclcpp::get_logger("optimal_planner"),
+                "DiscreteTEBPlanner: Building graph failed.");
     clearGraph();
     return false;
   }
@@ -173,7 +218,8 @@ bool DiscreteTEBPlanner::optimizeTEB(int no_inner_iterations, int no_outer_itera
   for (int i = 0; i < no_outer_iterations; ++i) {
     success = optimizeGraph(no_inner_iterations, false);
     if (!success) {
-      RCLCPP_INFO(rclcpp::get_logger("optimal_planner"), "Optimizing graph failed.");
+      RCLCPP_INFO(rclcpp::get_logger("optimal_planner"),
+                  "DiscreteTEBPlanner: Optimizing graph failed.");
       clearGraph();
       return false;
     }
@@ -192,102 +238,88 @@ bool DiscreteTEBPlanner::optimizeTEB(int no_inner_iterations, int no_outer_itera
   writeBackOptimizedValues();
   clearGraph();
 
-  RCLCPP_DEBUG(rclcpp::get_logger("optimal_planner"), "DiscreteTEBPlanner: TEB optimized.");
-
   return true;
 }
 
-bool DiscreteTEBPlanner::buildGraph() {
+bool DiscreteTEBPlanner::buildGraph(OptimizationPhase phase) {
   if (!optimizer_->edges().empty() || !optimizer_->vertices().empty())
     return false;
 
-  // read params
   bool divergence_detection = params_.FollowPath.recovery.divergence_detection_enable;
   std::string robot_model = params_.FollowPath.robot.robot_model;
-  RCLCPP_DEBUG(rclcpp::get_logger("optimal_planner"), "DiscreteTEBPlanner: Build graph.");
+  RCLCPP_DEBUG(rclcpp::get_logger("optimal_planner"),
+               "DiscreteTEBPlanner: Build graph (phase %d).", static_cast<int>(phase));
   optimizer_->setComputeBatchStatistics(divergence_detection);
 
-  // add TEB vertices
   AddTEBVertices();
-  RCLCPP_DEBUG(rclcpp::get_logger("optimal_planner"), "DiscreteTEBPlanner: Added vertices.");
 
   const bool holonomic = params_.FollowPath.robot.v_max_y > 0;
 
-  // Edges
-  // Generic Edges
-  // AddEdgesVelocity();
-  if (!holonomic)
-    addEdgesGeneric<EdgeVelocity, 2>({2, 1, 1, 0, 2},
-                                     {params_.FollowPath.weights.weight_v_max_x,
-                                      params_.FollowPath.weights.weight_v_max_theta});
-  else
-    addEdgesGeneric<EdgeVelocityHolonomic, 3>(
-        {2, 1, 1, 0, 3},
-        {params_.FollowPath.weights.weight_v_max_x, params_.FollowPath.weights.weight_v_max_y,
-         params_.FollowPath.weights.weight_v_max_theta});
-  // AddEdgesTimeOptimal();
-  addEdgesGeneric<EdgeTimeOptimal, 1>({0, 1, 1, 0, 1},
-                                      {params_.FollowPath.weights.weight_time_optimal});
-  // AddEdgesShortestPath();
-  addEdgesGeneric<EdgeShortestPath, 1>({2, 0, 1, 0, 1},
-                                       {params_.FollowPath.weights.weight_shortest_path});
-  // AddEdgesPathSmoothness();
-  addEdgesGeneric<EdgePathSmoothness, 1>({2, 0, 1, 0, 1},
-                                         {params_.FollowPath.weights.weight_shortest_path});
-  // addEdgesGeneric<EdgeJerk, 2>(
-  //     {4, 3, 3, 0, 2},
-  //     {params_.FollowPath.weights.weight_jerk_max_x,
-  //     params_.FollowPath.weights.weight_jerk_max_theta});
-  // AddEdgesSnap();
-  addEdgesGeneric<EdgeSnap, 2>({5, 4, 4, 0, 2},
-                               {params_.FollowPath.weights.weight_snap_max_x,
-                                params_.FollowPath.weights.weight_snap_max_theta});
-  // AddEdgesG3Continuity();
+  // Obstacles — always present in every phase
+  addEdgesESDFObstacles();
+
+  // G3 continuity and kinematics — present from Obstacles phase onward
   addEdgesGeneric<EdgeG3Continuity, 1>({3, 2, 2, 0, 1},
                                        {params_.FollowPath.weights.weight_g3_continuity});
-  // AddEdgesSteeringAngleGoal();
-  addEdgesGeneric<EdgeSteeringAngleGoal, 1>(
-      {5, 0, 0, -1, 1}, {params_.FollowPath.weights.weight_zero_steering_angle_goal});
-  // AddEdgesGoalAngularVelocityZero();
-  addEdgesGeneric<EdgeGoalAngularVelocityZero, 1>(
-      {5, 4, 0, -1, 1}, {params_.FollowPath.weights.weight_goal_angular_vel_zero});
-
-  // Kinematic Edges
   if (robot_model == "diff_drive")
-    // AddEdgesKinematicsDiffDrive();
     addEdgesGeneric<EdgeKinematicsDiffDrive, 2>(
         {2, 0, 1, 0, 2}, {params_.FollowPath.weights.weight_kinematics_nh,
                           params_.FollowPath.weights.weight_kinematics_forward_drive});
   else if (robot_model == "ackermann")
-    // AddEdgesKinematicsCarlike();
     addEdgesGeneric<EdgeKinematicsCarlike, 2>(
         {2, 0, 1, 0, 2}, {params_.FollowPath.weights.weight_kinematics_nh,
                           params_.FollowPath.weights.weight_kinematics_turning_radius});
 
-  RCLCPP_DEBUG(rclcpp::get_logger("optimal_planner"), "DiscreteTEBPlanner: Added generic edges.");
+  // Kinodynamics group — velocity, dynamics, steering
+  if (phase >= OptimizationPhase::Kinodynamics) {
+    if (!holonomic)
+      addEdgesGeneric<EdgeVelocity, 2>({2, 1, 1, 0, 2},
+                                       {params_.FollowPath.weights.weight_v_max_x,
+                                        params_.FollowPath.weights.weight_v_max_theta});
+    else
+      addEdgesGeneric<EdgeVelocityHolonomic, 3>(
+          {2, 1, 1, 0, 3},
+          {params_.FollowPath.weights.weight_v_max_x, params_.FollowPath.weights.weight_v_max_y,
+           params_.FollowPath.weights.weight_v_max_theta});
 
-  // Add Edges with measurement
-  AddEdgesAcceleration();
-  AddEdgesSteeringRate();
-  AddEdgesStartSteeringAngle();
-  AddEdgesJerk();
+    addEdgesGeneric<EdgeSnap, 2>({5, 4, 4, 0, 2},
+                                 {params_.FollowPath.weights.weight_snap_max_x,
+                                  params_.FollowPath.weights.weight_snap_max_theta});
+    addEdgesGeneric<EdgeSteeringAngleGoal, 1>(
+        {5, 0, 0, -1, 1}, {params_.FollowPath.weights.weight_zero_steering_angle_goal});
+    addEdgesGeneric<EdgeGoalAngularVelocityZero, 1>(
+        {5, 4, 0, -1, 1}, {params_.FollowPath.weights.weight_goal_angular_vel_zero});
 
-  RCLCPP_DEBUG(rclcpp::get_logger("optimal_planner"),
-               "DiscreteTEBPlanner: Added measurement edges.");
+    RCLCPP_DEBUG(rclcpp::get_logger("optimal_planner"),
+                 "DiscreteTEBPlanner: Added generic edges (phase %d).", static_cast<int>(phase));
 
-  // Via points
-  AddEdgesViaPoints();
+    // Measurement edges (acceleration, steering rate, jerk)
+    AddEdgesAcceleration();
+    AddEdgesSteeringRate();
+    AddEdgesStartSteeringAngle();
+    AddEdgesJerk();
 
-  // Obstacle Edges
-  // AddEdgesObstacles();
-  addEdgesESDFObstacles();
+    RCLCPP_DEBUG(rclcpp::get_logger("optimal_planner"),
+                 "DiscreteTEBPlanner: Added measurement edges (phase %d).",
+                 static_cast<int>(phase));
 
-  RCLCPP_DEBUG(rclcpp::get_logger("optimal_planner"), "DiscreteTEBPlanner: Added obstacle edges.");
+    AddEdgesViaPoints();
+    AddEdgesPreferRotDir();
+  }
 
-  // Recovery
-  AddEdgesPreferRotDir();
+  // Efficiency group — time optimal, shortest path, smoothness
+  if (phase >= OptimizationPhase::Full) {
+    addEdgesGeneric<EdgeTimeOptimal, 1>({0, 1, 1, 0, 1},
+                                        {params_.FollowPath.weights.weight_time_optimal});
+    addEdgesGeneric<EdgeShortestPath, 1>({2, 0, 1, 0, 1},
+                                         {params_.FollowPath.weights.weight_shortest_path});
+    addEdgesGeneric<EdgePathSmoothness, 1>({2, 0, 1, 0, 1},
+                                           {params_.FollowPath.weights.weight_shortest_path});
 
-  RCLCPP_DEBUG(rclcpp::get_logger("optimal_planner"), "DiscreteTEBPlanner: Added edges.");
+    RCLCPP_DEBUG(rclcpp::get_logger("optimal_planner"),
+                 "DiscreteTEBPlanner: Added efficiency edges (phase %d).",
+                 static_cast<int>(phase));
+  }
 
   optimizer_->initializeOptimization();
   return true;

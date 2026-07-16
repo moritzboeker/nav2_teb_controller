@@ -282,6 +282,11 @@ teb_controller:
         type: bool
         default_value: false
 
+      stepwise_optimization:
+        type: bool
+        default_value: true
+        description: "Enable 3-phase optimization: obstacles+base → kinodynamics → efficiency"
+
       divergence_detection_enable:
         type: bool
         default_value: false
