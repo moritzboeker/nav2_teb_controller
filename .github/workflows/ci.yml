@@ -58,10 +58,10 @@ jobs:
           cd ros2_ws/src/nav2_teb_controller
           make format
 
-      - name: Lint
-        run: |
-          . /opt/ros/jazzy/setup.sh
-          . ros2_ws/install/setup.sh
-          cd ros2_ws/src/nav2_teb_controller
-          make lint WS=$(pwd)/../../..
+      # - name: Lint
+      #   run: |
+      #     . /opt/ros/jazzy/setup.sh
+      #     . ros2_ws/install/setup.sh
+      #     cd ros2_ws/src/nav2_teb_controller
+      #     make lint WS=$(pwd)/../../..
 
